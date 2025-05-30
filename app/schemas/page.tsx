@@ -1,7 +1,8 @@
-import { SchemasGrid } from "@/components/schemas-grid"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Search, Filter, Plus } from "lucide-react"
+import { SchemasGrid } from "@/components/schemas-grid";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search, Filter, Plus } from "lucide-react";
+import Link from "next/link";
 
 export default function SchemasPage() {
   return (
@@ -9,12 +10,16 @@ export default function SchemasPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">All Schemas</h1>
-          <p className="text-muted-foreground">Explore all attestation schemas available on the Sui blockchain.</p>
+          <p className="text-muted-foreground">
+            Explore all attestation schemas available on the Sui blockchain.
+          </p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Schema
-        </Button>
+        <Link href="/schemas/create">
+          <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
+            <Plus className="h-4 w-4 mr-2" />
+            Create Schema
+          </Button>
+        </Link>
       </div>
 
       <div className="flex items-center gap-4">
@@ -29,5 +34,5 @@ export default function SchemasPage() {
 
       <SchemasGrid />
     </div>
-  )
+  );
 }

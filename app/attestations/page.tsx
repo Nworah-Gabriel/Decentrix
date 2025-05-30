@@ -2,6 +2,7 @@ import { AttestationsTable } from "@/components/attestations-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Filter } from "lucide-react";
+import Link from "next/link";
 
 export default function AttestationsPage() {
   return (
@@ -15,9 +16,11 @@ export default function AttestationsPage() {
             Browse and search through all attestations on Sui blockchain.
           </p>
         </div>
-        <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
-          Make Attestation
-        </Button>
+        <Link href="/attestations/create">
+          <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
+            Make Attestation
+          </Button>
+        </Link>
       </div>
 
       <div className="flex items-center gap-4">
