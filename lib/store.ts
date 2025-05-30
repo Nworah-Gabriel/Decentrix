@@ -1,93 +1,117 @@
 import { create } from "zustand"
 
-interface Attestation {
+export interface Attestation {
   uid: string
   schemaId: string
-  schemaType: string
   from: string
   to: string
-  type: string
-  timestamp: string
+  type: "WITNESSED" | "SELF"
+  age: string
+  data?: any
 }
 
-interface AttestationStore {
+export interface Schema {
+  id: string
+  name: string
+  description: string
+  attestationCount: number
+  createdAt: string
+  fields: string[]
+}
+
+export interface Stats {
   totalAttestations: number
   totalSchemas: number
   uniqueAttestors: number
-  attestations: Attestation[]
-  fetchStats: () => void
-  fetchAttestations: () => void
 }
 
-export const useAttestationStore = create<AttestationStore>((set) => ({
-  totalAttestations: 0,
-  totalSchemas: 0,
-  uniqueAttestors: 0,
-  attestations: [],
+interface AttestationStore {
+  stats: Stats
+  recentAttestations: Attestation[]
+  recentSchemas: Schema[]
+  allAttestations: Attestation[]
+  allSchemas: Schema[]
+  getAttestationById: (id: string) => Attestation | undefined
+  getSchemaById: (id: string) => Schema | undefined
+}
 
-  fetchStats: () => {
-    // Simulate API call - replace with actual Sui blockchain data
-    setTimeout(() => {
-      set({
-        totalAttestations: 12847,
-        totalSchemas: 324,
-        uniqueAttestors: 1256,
-      })
-    }, 500)
-  },
+// Mock data generator
+const generateMockAttestations = (count: number): Attestation[] => {
+  const types: ("WITNESSED" | "SELF")[] = ["WITNESSED", "SELF"]
+  const ages = ["4 hours ago", "1 day ago", "2 days ago", "1 week ago", "2 weeks ago"]
 
-  fetchAttestations: () => {
-    // Simulate API call - replace with actual Sui blockchain data
-    setTimeout(() => {
-      const mockAttestations: Attestation[] = [
-        {
-          uid: "0x1a2b3c4d5e6f7890abcdef1234567890",
-          schemaId: "179",
-          schemaType: "WITNESSED_ATTESTATIONS",
-          from: "attestations.suibreakerlabs.sui",
-          to: "attestations.suibreakerlabs.sui",
-          type: "ONCHAIN",
-          timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          uid: "0x2b3c4d5e6f7890abcdef1234567890ab",
-          schemaId: "179",
-          schemaType: "WITNESSED_ATTESTATIONS",
-          from: "attestations.suibreakerlabs.sui",
-          to: "attestations.suibreakerlabs.sui",
-          type: "ONCHAIN",
-          timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          uid: "0x3c4d5e6f7890abcdef1234567890abcd",
-          schemaId: "153",
-          schemaType: "ENDORSEMENTS",
-          from: "attestations.suibreakerlabs.sui",
-          to: "certez.sui",
-          type: "ONCHAIN",
-          timestamp: new Date(Date.now() - 13 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          uid: "0x4d5e6f7890abcdef1234567890abcdef",
-          schemaId: "179",
-          schemaType: "IDENTITY_VERIFICATION",
-          from: "attestations.suibreakerlabs.sui",
-          to: "attestations.suibreakerlabs.sui",
-          type: "ONCHAIN",
-          timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        },
-        {
-          uid: "0x5e6f7890abcdef1234567890abcdef12",
-          schemaId: "179",
-          schemaType: "REPUTATION_SCORE",
-          from: "attestations.suibreakerlabs.sui",
-          to: "attestations.suibreakerlabs.sui",
-          type: "ONCHAIN",
-          timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        },
-      ]
+  return Array.from({ length: count }, (_, i) => ({
+    uid: `0x${Math.random().toString(16).substr(2, 40)}`,
+    schemaId: (Math.floor(Math.random() * 300) + 1).toString(),
+    from: `0x${Math.random().toString(16).substr(2, 40)}`,
+    to: `0x${Math.random().toString(16).substr(2, 40)}`,
+    type: types[Math.floor(Math.random() * types.length)],
+    age: ages[Math.floor(Math.random() * ages.length)],
+  }))
+}
 
-      set({ attestations: mockAttestations })
-    }, 300)
-  },
-}))
+const generateMockSchemas = (count: number): Schema[] => {
+  const schemaNames = [
+    "Identity Verification",
+    "Educational Credential",
+    "Professional Certification",
+    "Reputation Score",
+    "Membership Proof",
+    "Achievement Badge",
+    "Skill Verification",
+    "Experience Record",
+    "Trust Rating",
+    "Compliance Certificate",
+  ]
+
+  const fieldOptions = [
+    "name",
+    "email",
+    "score",
+    "verified",
+    "timestamp",
+    "issuer",
+    "level",
+    "category",
+    "description",
+    "metadata",
+    "expiry",
+    "type",
+    "status",
+  ]
+
+  return Array.from({ length: count }, (_, i) => ({
+    id: (i + 1).toString(),
+    name: schemaNames[i % schemaNames.length],
+    description: `A schema for ${schemaNames[i % schemaNames.length].toLowerCase()} on the Sui blockchain.`,
+    attestationCount: Math.floor(Math.random() * 1000) + 10,
+    createdAt: `${Math.floor(Math.random() * 30) + 1} days ago`,
+    fields: Array.from(
+      { length: Math.floor(Math.random() * 5) + 3 },
+      () => fieldOptions[Math.floor(Math.random() * fieldOptions.length)],
+    ).filter((field, index, arr) => arr.indexOf(field) === index),
+  }))
+}
+
+export const useAttestationStore = create<AttestationStore>((set, get) => {
+  const allAttestations = generateMockAttestations(1000)
+  const allSchemas = generateMockSchemas(216)
+
+  return {
+    stats: {
+      totalAttestations: 10768,
+      totalSchemas: 216,
+      uniqueAttestors: 634,
+    },
+    recentAttestations: allAttestations.slice(0, 8),
+    recentSchemas: allSchemas.slice(0, 6),
+    allAttestations,
+    allSchemas,
+    getAttestationById: (id: string) => {
+      return get().allAttestations.find((attestation) => attestation.uid === id)
+    },
+    getSchemaById: (id: string) => {
+      return get().allSchemas.find((schema) => schema.id === id)
+    },
+  }
+})
