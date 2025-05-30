@@ -1,7 +1,6 @@
 import { AttestationsTable } from "@/components/attestations-table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Search, Filter } from "lucide-react";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 
 export default function AttestationsPage() {
@@ -18,25 +17,18 @@ export default function AttestationsPage() {
         </div>
         <Link href="/attestations/create">
           <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
+            <Plus className="h-4 w-4 mr-2" />
             Make Attestation
           </Button>
         </Link>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search attestations, UIDs, or addresses..."
-            className="pl-10"
-          />
-        </div>
-        <Button variant="outline" size="icon">
-          <Filter className="h-4 w-4" />
-        </Button>
-      </div>
-
-      <AttestationsTable />
+      <AttestationsTable
+        isHomepage={false}
+        showTitle={false}
+        showSearch={true}
+        showPagination={true}
+      />
     </div>
   );
 }

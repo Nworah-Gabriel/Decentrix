@@ -1,67 +1,9 @@
-import React from "react";
+"use client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  TrendingUp,
-  Users,
-  FileText,
-  Plus,
-  ExternalLink,
-  Eye,
-} from "lucide-react";
-
-// Mock store hook for demo
-const useAttestationStore = () => ({
-  stats: {
-    totalAttestations: 15420,
-    totalSchemas: 342,
-    uniqueAttestors: 1205,
-  },
-  recentAttestations: [
-    {
-      uid: "0x1a2b3c4d5e6f7890abcdef1234567890",
-      schemaId: "42",
-      from: "0xabc123def456789",
-      to: "0x789def456abc123",
-      type: "WITNESSED",
-      age: "2 hours ago",
-    },
-    {
-      uid: "0x9876543210fedcba0987654321abcdef",
-      schemaId: "38",
-      from: "0x456789abcdef123",
-      to: "0x123abc456def789",
-      type: "SELF",
-      age: "4 hours ago",
-    },
-    {
-      uid: "0xfedcba0987654321fedcba0987654321",
-      schemaId: "55",
-      from: "0xdef123456789abc",
-      to: "0x987654321abcdef",
-      type: "WITNESSED",
-      age: "6 hours ago",
-    },
-  ],
-  recentSchemas: [
-    {
-      id: "42",
-      name: "Identity Verification",
-      attestationCount: 1250,
-    },
-    {
-      id: "38",
-      name: "Academic Credential",
-      attestationCount: 890,
-    },
-    {
-      id: "55",
-      name: "Professional License",
-      attestationCount: 567,
-    },
-  ],
-});
+import { TrendingUp, Users, FileText, Plus } from "lucide-react";
+import Link from "next/link";
+import { useAttestationStore } from "@/lib/store";
 
 export function DashboardStats() {
   const { stats } = useAttestationStore();
@@ -130,13 +72,15 @@ export function DashboardStats() {
               </p>
             </div>
             <div className="flex-shrink-0 w-full sm:w-auto">
-              <Button
-                size="lg"
-                className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Make Attestation
-              </Button>
+              <Link href="/attestations/create">
+                <Button
+                  size="lg"
+                  className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Make Attestation
+                </Button>
+              </Link>
             </div>
           </div>
         </CardContent>

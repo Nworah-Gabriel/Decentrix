@@ -1,14 +1,16 @@
-import { AttestationDetail } from "@/components/attestation-detail"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
-import Link from "next/link"
+import AttestationDetail from "@/components/attestation-detail";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 interface AttestationPageProps {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }
 
-export default async function AttestationPage({ params }: AttestationPageProps) {
-  const { id } = await params
+export default async function AttestationPage({
+  params,
+}: AttestationPageProps) {
+  const { id } = await params;
 
   return (
     <div className="space-y-6">
@@ -23,5 +25,5 @@ export default async function AttestationPage({ params }: AttestationPageProps) 
 
       <AttestationDetail id={id} />
     </div>
-  )
+  );
 }

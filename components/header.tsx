@@ -5,18 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Search,
-  Menu,
-  X,
-  Github,
-  Twitter,
-  Moon,
-  Sun,
-  Wallet,
-} from "lucide-react";
+import { Search, Menu, X, Github, Twitter, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
+import { WalletConnect } from "./wallet-connect";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +19,7 @@ import {
 const navigation = [
   { name: "Attestations", href: "/attestations" },
   { name: "Schemas", href: "/schemas" },
+  { name: "Analytics", href: "/analytics" },
   { name: "Tools", href: "/tools" },
   { name: "Docs", href: "/docs" },
 ];
@@ -38,15 +31,14 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4 py-3 ">
-        <div className="flex h-16 items-center justify-between">
+      <div className="container mx-auto px-4 py-3">
+        <div className="flex h-16 items-center justify-between gap-8">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
               <span className="text-white font-bold text-sm">SAS</span>
             </div>
-            <span className="font-bold text-xl">SAS</span>
-            {/* <span className="text-sm text-muted-foreground hidden sm:inline">MAINNET</span> */}
+            {/* <span className="font-bold text-xl">SAS</span> */}
           </Link>
 
           {/* Desktop Navigation */}
@@ -57,7 +49,7 @@ export function Header() {
                 href={item.href}
                 className={cn(
                   "text-sm font-medium transition-colors hover:text-primary",
-                  pathname === item.href
+                  pathname === item.href || pathname.startsWith(item.href)
                     ? "text-foreground"
                     : "text-muted-foreground"
                 )}
@@ -109,10 +101,9 @@ export function Header() {
               <Github className="h-4 w-4" />
             </Button>
 
-            <Button className="hidden sm:flex">
-              <Wallet className="h-4 w-4 mr-2" />
-              Connect
-            </Button>
+            <div className="hidden sm:block">
+              <WalletConnect />
+            </div>
 
             <Button
               variant="ghost"
@@ -149,10 +140,7 @@ export function Header() {
                 </Link>
               ))}
               <div className="pt-4 border-t">
-                <Button className="w-full">
-                  <Wallet className="h-4 w-4 mr-2" />
-                  Connect Wallet
-                </Button>
+                <WalletConnect />
               </div>
             </nav>
           </div>

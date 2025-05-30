@@ -1,27 +1,27 @@
-import SchemaDetail from "@/components/schema-detail";
+import { AddressDetail } from "@/components/address-detail";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
-interface SchemaPageProps {
-  params: Promise<{ id: string }>;
+interface AddressPageProps {
+  params: Promise<{ address: string }>;
 }
 
-export default async function SchemaPage({ params }: SchemaPageProps) {
-  const { id } = await params;
+export default async function AddressPage({ params }: AddressPageProps) {
+  const { address } = await params;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link href="/schemas">
+        <Link href="/">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Schemas
+            Back to Home
           </Button>
         </Link>
       </div>
 
-      <SchemaDetail id={id} />
+      <AddressDetail address={address} />
     </div>
   );
 }
