@@ -9,7 +9,11 @@ import {
   useWallets,
 } from "@mysten/dapp-kit";
 import { Loader2 } from "lucide-react";
-import { isEnokiWallet, type EnokiWallet, type AuthProvider } from "@mysten/enoki";
+import {
+  isEnokiWallet,
+  type EnokiWallet,
+  type AuthProvider,
+} from "@mysten/enoki";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -22,9 +26,9 @@ export default function AuthCallbackPage() {
       try {
         // Get the OAuth code from URL
         const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
+        const code = urlParams.get("code");
         if (!code) {
-          throw new Error('No OAuth code found');
+          throw new Error("No OAuth code found");
         }
 
         // Find the Google Enoki wallet
@@ -33,10 +37,10 @@ export default function AuthCallbackPage() {
           (map, wallet) => map.set(wallet.provider, wallet),
           new Map<AuthProvider, EnokiWallet>()
         );
-        const googleWallet = walletsByProvider.get('google');
-        
+        const googleWallet = walletsByProvider.get("google");
+
         if (!googleWallet) {
-          throw new Error('Google wallet not found');
+          throw new Error("Google wallet not found");
         }
 
         // Connect the wallet
@@ -44,15 +48,15 @@ export default function AuthCallbackPage() {
         const account = googleWallet.accounts[0];
 
         if (!account) {
-          throw new Error('No account found in wallet');
+          throw new Error("No account found in wallet");
         }
 
         // Set wallet data in store
         walletStore.setWalletData({
           address: account.address,
           publicKey: account.publicKey,
-          walletProvider: 'google',
-          network: 'Testnet'
+          walletProvider: "google",
+          network: "Testnet",
         });
 
         // Redirect to home page
@@ -61,8 +65,8 @@ export default function AuthCallbackPage() {
         console.error("Auth callback error:", error);
         // Clear any partial wallet state
         await disconnect();
-        walletStore.clearWalletData();
-        router.push("/error");
+
+        router.push("/");
       }
     };
 

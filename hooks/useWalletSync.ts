@@ -87,7 +87,6 @@ export function useWalletSync() {
       }
     } else if (previousAddress && isInitializedRef.current) {
       // Only clear if we're not in the initial load phase
-      clearWalletData();
       setBalance("0 SUI");
       console.log("Wallet disconnected, clearing store");
     }
