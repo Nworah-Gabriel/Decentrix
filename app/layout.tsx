@@ -2,6 +2,7 @@ import type React from "react";
 import type { Metadata } from "next";
 import "./globals.css";
 import { Header } from "@/components/header";
+import { Footer } from "@/components/footer";
 import { ThemeProvider } from "@/components/theme-provider";
 import Provider from "@/components/Provider";
 
@@ -27,7 +28,8 @@ export default function RootLayout({
           >
             <div className="min-h-screen bg-background">
               <Header />
-              <main className="container mx-auto px-4 py-8">{children}</main>
+              <main className="container mx-auto px-4 py-8 flex-grow">{children}</main>
+              <Footer />
             </div>
           </ThemeProvider>
         </Provider>

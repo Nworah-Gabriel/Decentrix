@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Eye, FileText, User, Shield } from "lucide-react";
 import { useAttestationStore } from "@/store/useAttestation";
-import { useSchemaStore } from "@/store/useSchema";
+import { Schema, useSchemaStore } from "@/store/useSchema";
 import Link from "next/link";
 
 interface SearchResultsProps {
@@ -19,7 +19,7 @@ export function SearchResults({
   type = "all",
 }: SearchResultsProps) {
   const { allAttestations } = useAttestationStore();
-  const { allSchemas } = useSchemaStore();
+  const { schemas } = useSchemaStore();
 
   const formatAddress = (address: string) => {
     return `${address.slice(0, 8)}...${address.slice(-6)}`;
@@ -48,7 +48,7 @@ export function SearchResults({
       attestation.subject.toLowerCase().includes(query.toLowerCase())
   );
 
-  const searchSchemas = allSchemas.filter(
+  const searchSchemas = schemas.filter(
     (schema) =>
       schema.name.toLowerCase().includes(query.toLowerCase()) ||
       schema.description.toLowerCase().includes(query.toLowerCase()) ||
@@ -156,7 +156,7 @@ export function SearchResults({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {searchSchemas.slice(0, 5).map((schema) => (
+                {searchSchemas.slice(0, 5).map((schema: Schema) => (
                   <div
                     key={schema.id}
                     className="flex items-center justify-between p-3 border rounded-lg"

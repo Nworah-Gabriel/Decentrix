@@ -21,7 +21,7 @@ const Provider: React.FC<Props> = ({ children }) => {
   const queryClient = new QueryClient();
   const { networkConfig } = createNetworkConfig({
     testnet: { url: getFullnodeUrl("testnet") },
-    mainnet: { url: getFullnodeUrl("mainnet") },
+    devnet: { url: getFullnodeUrl("devnet") },
   });
 
   const { fetchAttestations } = useAttestationStore();
@@ -63,7 +63,7 @@ const Provider: React.FC<Props> = ({ children }) => {
   return (
     <QueryClientProvider client={queryClient}>
       <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
-        <WalletProvider autoConnect>{children}</WalletProvider>
+        <WalletProvider>{children}</WalletProvider>
       </SuiClientProvider>
     </QueryClientProvider>
   );

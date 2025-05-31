@@ -1,105 +1,101 @@
-import { API_URL } from "@/constants";
 import { create } from "zustand";
+import { Transaction } from "@mysten/sui/transactions";
+import { API_URL } from "@/constants";
+import { NewSchemaPayload, NewSchemaResponse, Schema } from "@/types";
+import { useWalletStore } from "@/store/useWallet";
 
-// --- Types and Interfaces ---
-
-export interface Schema {
-  id: string;
-  name: string;
-  description: string;
-  definition_json: string;
-  creator: string;
-  issuer: string;
-  subject: string;
-  data_hash: string[];
-  schema_id: string;
-  timestamp_ms: string;
-}
-
-export interface NewSchemaPayload {
-  name: string;
-  description: string;
-  definitionJson: string;
-}
-
-export interface NewSchemaResponse {
-  message: string;
-  transactionDigest: string;
-  attestationObjectId: string;
-  suiObjectLink: string;
-}
+// Using Schema type from @/types
 
 interface SchemaStore {
   schemas: Schema[];
-  recentSchemas: Schema[];
-  selectedSchema?: Schema | null;
   loading: boolean;
-  error?: string | null;
+  error: string | null;
 
   fetchSchemas: () => Promise<void>;
-  fetchSchemaById: (id: string) => Promise<void>;
-  createSchema: (
-    payload: NewSchemaPayload
-  ) => Promise<NewSchemaResponse | undefined>;
+  createSchema: (payload: NewSchemaPayload) => Promise<NewSchemaResponse>;
 
-  setSelectedSchema: (schema: Schema | null) => void;
 }
 
-export const useSchemaStore = create<SchemaStore>((set, get) => ({
-  schemas: [],
-  recentSchemas: [],
-  selectedSchema: null,
-  loading: false,
-  error: null,
+export const useSchemaStore = create<SchemaStore>((set, get) => {
+  const walletStore = useWalletStore();
 
-  fetchSchemas: async () => {
+  const createSchema = async (payload: NewSchemaPayload) => {
     set({ loading: true, error: null });
+    
     try {
-      const res = await fetch(`${API_URL}/schemas`);
-      if (!res.ok) throw new Error(`Error: ${res.statusText}`);
-      const data = await res.json();
-      set({
-        schemas: data.schemas,
-        recentSchemas: data.schemas.slice(0, 6),
-        loading: false,
+      const response = await fetch(`${API_URL}/schemas`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: payload.name,
+          description: payload.description,
+          definition_json: payload.definition_json
+        }),
       });
-    } catch (err: any) {
-      set({ error: err.message, loading: false });
-    }
-  },
 
-  fetchSchemaById: async (id: string) => {
-    set({ loading: true, error: null });
-    try {
-      const res = await fetch(`${API_URL}/schemas/${id}`);
-      if (!res.ok) throw new Error(`Error: ${res.statusText}`);
-      const data = await res.json();
-      set({ selectedSchema: data.content, loading: false });
-    } catch (err: any) {
-      set({ error: err.message, loading: false });
-    }
-  },
+      if (!response.ok) {
+        throw new Error('Failed to create schema');
+      }
 
-  createSchema: async (payload: NewSchemaPayload) => {
-    set({ loading: true, error: null });
-    try {
-      const res = await fetch(`${API_URL}/schemas`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error(`Error: ${res.statusText}`);
-      const result = await res.json();
-      // Refresh list after creation
+      const result = await response.json();
       await get().fetchSchemas();
-      return result as NewSchemaResponse;
-    } catch (err: any) {
-      set({ error: err.message, loading: false });
-      return undefined;
+      set({ loading: false });
+      return result;
+    } catch (error: any) {
+      set({ error: error.message, loading: false });
+      throw new Error('Failed to create schema: ' + error.message);
     }
-  },
+  };
 
-  setSelectedSchema: (schema: Schema | null) => {
-    set({ selectedSchema: schema });
-  },
-}));
+  return {
+    schemas: [],
+    loading: false,
+    error: null,
+    fetchSchemas: async () => {
+      set({ loading: true, error: null });
+      try {
+        const response = await fetch(`${API_URL}/schemas`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch schemas: ${response.statusText}`);
+        }
+        const data = await response.json();
+        set({ schemas: data.schemas });
+      } catch (error: any) {
+        set({ error: error.message });
+      } finally {
+        set({ loading: false });
+      }
+    },
+    createSchema: async (payload: NewSchemaPayload) => {
+      set({ loading: true, error: null });
+      try {
+        const response = await fetch(`${API_URL}/schemas`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: payload.name,
+            description: payload.description,
+            definition_json: payload.definition_json
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to create schema: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        await get().fetchSchemas();
+        return result;
+      } catch (error: any) {
+        set({ error: error.message });
+        throw error;
+      } finally {
+        set({ loading: false });
+      }
+    },
+  };
+});

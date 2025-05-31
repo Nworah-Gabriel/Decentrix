@@ -1,40 +1,63 @@
 import { create } from "zustand";
-import {
-  useCurrentAccount,
-  useSignAndExecuteTransaction,
-  useSuiClient,
-} from "@mysten/dapp-kit";
 import { Transaction } from "@mysten/sui/transactions";
+import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 
 interface WalletStore {
-  account: ReturnType<typeof useCurrentAccount> | null;
+  address: string | null;
+  readonly publicKey: any;
   sessionExpiry: Date | null;
   isConnected: boolean;
+  balance: string | null;
 
   // Methods
-  connect: () => Promise<void>;
-  disconnect: () => Promise<void>;
-  refreshSession: () => Promise<void>;
-  signAndExecuteTransaction: (transaction: Transaction) => Promise<any>;
+  setWalletData: (data: {
+    address: string;
+    readonly publicKey?: any;
+    sessionExpiry?: Date;
+  }) => void;
+  clearWalletData: () => void;
+  setBalance: (balance: string) => void;
+  refreshSession: () => void;
+  executeTransaction: (transaction: Transaction) => Promise<any>;
 }
 
-export const useWalletStore = create<WalletStore>((set, get) => ({
-  account: null,
-  sessionExpiry: null,
-  isConnected: false,
+export const useWalletStore = create<WalletStore>((set, get) => {
+  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
+  const currentAccount = useCurrentAccount();
 
-  connect: async () => {
+  const executeTransaction = async (transaction: Transaction) => {
+    if (!currentAccount?.address) {
+      throw new Error("Wallet not connected");
+    }
+
     try {
-      const currentAccount = useCurrentAccount();
-      if (!currentAccount?.address) {
-        throw new Error("Failed to connect wallet - no address returned");
-      }
+      const result = await signAndExecute({
+        transaction,
+      });
 
-      // Set session expiry (30 minutes from now)
-      const expiry = new Date(Date.now() + 30 * 60 * 1000);
+      return result;
+    } catch (err: any) {
+      const errorMessage = err.message || 'Transaction failed';
+      throw new Error(errorMessage);
+    }
+  };
+
+  return {
+    address: null,
+    publicKey: null,
+    sessionExpiry: null,
+    isConnected: false,
+    balance: null,
+    setWalletData: (data: {
+      address: string;
+      readonly publicKey?: any;
+      sessionExpiry?: Date;
+    }) => {
+      const expiry = data.sessionExpiry || new Date(Date.now() + 30 * 60 * 1000);
 
       set({
-        account: currentAccount,
+        address: data.address,
+        publicKey: data.publicKey || null,
         sessionExpiry: expiry,
         isConnected: true,
       });
@@ -43,64 +66,40 @@ export const useWalletStore = create<WalletStore>((set, get) => ({
       localStorage.setItem(
         "suiSession",
         JSON.stringify({
-          address: currentAccount.address,
+          address: data.address,
+          publicKey: data.publicKey,
           expiry: expiry.toISOString(),
         })
       );
-    } catch (error) {
-      console.error("Error connecting wallet:", error);
-      throw error;
-    }
-  },
+    },
+    clearWalletData: () => {
+      localStorage.removeItem("suiSession");
+      set({
+        address: null,
+        publicKey: null,
+        sessionExpiry: null,
+        isConnected: false,
+        balance: null,
+      });
+    },
+    setBalance: (balance: string) => {
+      set({ balance });
+    },
+    refreshSession: () => {
+      const { address } = get();
+      if (!address) return;
 
-  disconnect: async () => {
-    localStorage.removeItem("suiSession");
-    set({
-      account: null,
-      sessionExpiry: null,
-      isConnected: false,
-    });
-  },
-
-  refreshSession: async () => {
-    try {
-      const currentAccount = useCurrentAccount();
-      if (!currentAccount?.address) return;
-
-      // Extend session by 30 minutes
       const newExpiry = new Date(Date.now() + 30 * 60 * 1000);
       set({ sessionExpiry: newExpiry });
 
       localStorage.setItem(
         "suiSession",
         JSON.stringify({
-          address: currentAccount.address,
+          address,
           expiry: newExpiry.toISOString(),
         })
       );
-    } catch (error) {
-      console.error("Error refreshing session:", error);
-    }
-  },
-
-  signAndExecuteTransaction: async (transaction: Transaction) => {
-    try {
-      const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
-      const currentAccount = useCurrentAccount();
-
-      if (!currentAccount?.address) {
-        throw new Error("Wallet not connected");
-      }
-
-      // Execute transaction directly using dApp Kit
-      const result = await signAndExecute({
-        transaction,
-      });
-
-      return result;
-    } catch (error) {
-      console.error("Error executing transaction:", error);
-      throw error;
-    }
-  },
-}));
+    },
+    executeTransaction
+  };
+});
