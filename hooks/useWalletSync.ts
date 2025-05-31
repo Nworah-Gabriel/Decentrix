@@ -12,7 +12,6 @@ export function useWalletSync() {
     clearWalletData,
     setBalance,
     address: storedAddress,
-    isConnected: storedIsConnected,
   } = useWalletStore();
 
   const previousAccountRef = useRef<string | null>(null);
@@ -85,10 +84,6 @@ export function useWalletSync() {
       } catch (error) {
         console.error("Error syncing wallet data:", error);
       }
-    } else if (previousAddress && isInitializedRef.current) {
-      // Only clear if we're not in the initial load phase
-      setBalance("0 SUI");
-      console.log("Wallet disconnected, clearing store");
     }
 
     previousAccountRef.current = currentAddress;
