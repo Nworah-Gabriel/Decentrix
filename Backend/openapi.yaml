@@ -1,0 +1,362 @@
+openapi: 3.0.0
+info:
+  title: Sui Attestation Service API (Rewritten)
+  version: 1.1.0
+  description: API for creating and retrieving schemas and attestations on the Sui network.
+servers:
+  - url: http://localhost:3001/api # For local dev
+  - url: https://attest-test.vercel.app/api # For production
+
+components:
+  schemas:
+    SchemaRequest:
+      type: object
+      required:
+        - name
+        - description
+        - definitionJson
+      properties:
+        name:
+          type: string
+          description: "Name of the schema (e.g., EmailVerificationV1)"
+          example: "EmailVerificationV1"
+        description:
+          type: string
+          description: "Description of what this schema is used for"
+          example: "Schema for verifying an email address."
+        definitionJson:
+          type: string
+          description: "JSON string defining the schema structure"
+          example: '{"type":"object","properties":{"email":{"type":"string"}}}'
+
+    SchemaResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        transactionDigest:
+          type: string
+        schemaObjectId:
+          type: string
+          nullable: true
+        suiObjectLink:
+          type: string
+          nullable: true
+
+    AttestationRequest:
+      type: object
+      required:
+        - dataToAttest
+        - schemaObjectId
+      properties:
+        subjectAddress:
+          type: string
+          description: "Sui address of the subject being attested (e.g., 0x...). Optional."
+          example: "0x123abc..."
+        dataToAttest:
+          type: string
+          description: "Data to be attested (string, often JSON matching the schema)"
+          example: '{"email":"test@example.com"}'
+        schemaObjectId:
+          type: string
+          description: "Sui Object ID of the Schema this attestation uses"
+          example: "0xdef456..."
+
+    AttestationResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        transactionDigest:
+          type: string
+        attestationObjectId:
+          type: string
+          nullable: true
+        suiObjectLink:
+          type: string
+          nullable: true
+
+    SuiObject:
+      type: object
+      description: "Represents a Sui object fetched from the blockchain."
+      properties:
+        objectId:
+          type: string
+        version:
+          type: string
+        digest:
+          type: string
+        type:
+          type: string
+          description: "The Move type of the object."
+        owner:
+          type: object # Can be AddressOwner, ObjectOwner, Shared
+        previousTransaction:
+          type: string
+        storageRebate:
+          type: string
+        content:
+          type: object
+          description: "The fields of the Move object."
+          properties:
+            # These fields depend on your Schema/Attestation struct in Move
+            # Example for Schema struct:
+            id:
+              type: object
+              properties:
+                id:
+                  type: string
+            name:
+              type: string
+              description: "Name of the schema"
+            description:
+              type: string
+              description: "Description of the schema"
+            definition_json:
+              type: string
+              description: "JSON string defining the schema structure"
+            creator:
+              type: string
+              description: "Address of the schema creator"
+            # Example for Attestation struct:
+            issuer:
+              type: string
+              description: "Address of the attestation issuer"
+            subject:
+              type: string
+              description: "Address of the attestation subject"
+            data_hash:
+              type: array
+              items:
+                type: integer
+              description: "The raw byte array of the data hash."
+            schema_id:
+              type: string
+              description: "The ID of the schema object this attestation uses"
+            timestamp_ms:
+              type: string # Sui often returns u64 as string
+              description: "Timestamp when the attestation was created"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+          nullable: true
+
+paths:
+  /schemas:
+    post:
+      summary: Create a new Schema
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchemaRequest'
+      responses:
+        '201':
+          description: Schema created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error during schema creation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: Get all schemas
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          description: Pagination cursor for fetching next set of results
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Number of schemas to return per request (max 50)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: List of schemas retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schemas:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SuiObject'
+                  hasNextPage:
+                    type: boolean
+                  nextCursor:
+                    type: string
+                    nullable: true
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /schemas/{objectId}:
+    get:
+      summary: Retrieve a Schema by its Sui Object ID
+      parameters:
+        - name: objectId
+          in: path
+          required: true
+          description: The Sui Object ID of the schema.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful retrieval
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuiObject'
+        '404':
+          description: Schema not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /attestations:
+    post:
+      summary: Create a new Attestation using a Schema
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttestationRequest'
+      responses:
+        '201':
+          description: Attestation created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttestationResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error during attestation creation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: Get all attestations
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          description: Pagination cursor for fetching next set of results
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Number of attestations to return per request (max 50)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: List of attestations retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  attestations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SuiObject'
+                  hasNextPage:
+                    type: boolean
+                  nextCursor:
+                    type: string
+                    nullable: true
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /attestations/{objectId}:
+    get:
+      summary: Retrieve an Attestation by its Sui Object ID
+      parameters:
+        - name: objectId
+          in: path
+          required: true
+          description: The Sui Object ID of the attestation.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful retrieval
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuiObject'
+        '404':
+          description: Attestation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
