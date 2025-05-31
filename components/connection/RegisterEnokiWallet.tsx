@@ -19,10 +19,10 @@ export default function RegisterEnokiWallets() {
 
     // Always register Enoki wallets for testnet
     const { unregister } = registerEnokiWallets({
-      apiKey: process.env.NEXT_PUBLIC_ENOKI_API_KEY as string,
+      apiKey: process.env.NEXT_ENOKI_API_KEY as string,
       providers: {
         google: {
-          clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID as string,
+          clientId: process.env.NEXT_GOOGLE_CLIENT_ID as string,
           redirectUrl: REDIRECT_URL as string,
         },
       },
