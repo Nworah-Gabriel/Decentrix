@@ -10,8 +10,9 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  Plus,
 } from "lucide-react";
-import { useAttestationStore } from "@/lib/store";
+import { useAttestationStore } from "@/store/useAttestation";
 import { useState } from "react";
 import Link from "next/link";
 
@@ -36,28 +37,25 @@ export function AttestationsTable({
 }: AttestationsTableProps) {
   const { allAttestations: attestations } = useAttestationStore();
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [filterTypeInternal, setFilterTypeInternal] = useState("all");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 10;
 
   const filteredAttestations = attestations.filter((attestation) => {
     const matchesSearch =
-      attestation.uid.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      attestation.from.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      attestation.to.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesFilter =
-      filterTypeInternal === "all" || attestation.type === filterTypeInternal;
+      attestation.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      attestation.creator.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      attestation.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      attestation.name.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesAddress =
       !filterByAddress ||
-      (filterType === "attester" && attestation.from === filterByAddress) ||
-      (filterType === "recipient" && attestation.to === filterByAddress) ||
+      (filterType === "attester" && attestation.creator === filterByAddress) ||
+      (filterType === "recipient" && attestation.subject === filterByAddress) ||
       (!filterType &&
-        (attestation.from === filterByAddress ||
-          attestation.to === filterByAddress));
+        (attestation.creator === filterByAddress ||
+          attestation.subject === filterByAddress));
 
-    return matchesSearch && matchesFilter && matchesAddress;
+    return matchesSearch && matchesAddress;
   });
 
   // Apply limit for homepage
@@ -74,6 +72,15 @@ export function AttestationsTable({
     ? displayAttestations.slice(startIndex, endIndex)
     : displayAttestations;
 
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 8)}...${address.slice(-6)}`;
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(Number.parseInt(timestamp));
+    return date.toLocaleDateString();
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -85,7 +92,6 @@ export function AttestationsTable({
                   ? "Recent Attestations"
                   : "All Attestations"
                 : ""}
-              {/* {isHomepage ? "Recent Attestations" : "All Attestations"} */}
             </CardTitle>
             {!isHomepage && (
               <p className="text-sm text-muted-foreground mt-1">
@@ -95,9 +101,17 @@ export function AttestationsTable({
           </div>
 
           {isHomepage ? (
-            <Link href="/attestations">
-              <Button variant="outline">View All Attestations</Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/attestations/create">
+                <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Attestation
+                </Button>
+              </Link>
+              <Link href="/attestations">
+                <Button variant="outline">View All Attestations</Button>
+              </Link>
+            </div>
           ) : (
             showSearch && (
               <div className="flex items-center gap-2">
@@ -110,15 +124,6 @@ export function AttestationsTable({
                     className="pl-8 w-64"
                   />
                 </div>
-                <select
-                  value={filterTypeInternal}
-                  onChange={(e) => setFilterTypeInternal(e.target.value)}
-                  className="px-3 py-2 border rounded-md text-sm"
-                >
-                  <option value="all">All Types</option>
-                  <option value="WITNESSED">Witnessed</option>
-                  <option value="SELF">Self</option>
-                </select>
               </div>
             )
           )}
@@ -129,80 +134,59 @@ export function AttestationsTable({
           <table className="w-full min-w-[1000px]">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="text-left p-4 font-medium">UID</th>
+                <th className="text-left p-4 font-medium">ID</th>
+                <th className="text-left p-4 font-medium">Name</th>
                 <th className="text-left p-4 font-medium">Schema</th>
-                <th className="text-left p-4 font-medium">Attester</th>
-                <th className="text-left p-4 font-medium">Recipient</th>
-                <th className="text-left p-4 font-medium">Type</th>
-                <th className="text-left p-4 font-medium">Time</th>
-                <th className="text-left p-4 font-medium">Revoked</th>
+                <th className="text-left p-4 font-medium">Creator</th>
+                <th className="text-left p-4 font-medium">Subject</th>
+                <th className="text-left p-4 font-medium">Created</th>
                 <th className="text-left p-4 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
               {paginatedAttestations.map((attestation) => (
                 <tr
-                  key={attestation.uid}
+                  key={attestation.id}
                   className="border-b hover:bg-muted/30 transition-colors"
                 >
                   <td className="p-4">
-                    <Link href={`/attestations/${attestation.uid}`}>
+                    <Link href={`/attestations/${attestation.id}`}>
                       <div className="font-mono text-sm text-blue-600 hover:text-blue-800 cursor-pointer">
-                        {attestation.uid.slice(0, 10)}...
-                        {attestation.uid.slice(-8)}
+                        {formatAddress(attestation.id)}
                       </div>
                     </Link>
                   </td>
                   <td className="p-4">
-                    <Link href={`/schemas/${attestation.schemaId}`}>
+                    <div className="font-medium text-sm max-w-[200px] truncate">
+                      {attestation.name}
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <Link href={`/schemas/${attestation.schema_id}`}>
                       <Badge
                         variant="outline"
                         className="hover:bg-blue-50 cursor-pointer"
                       >
-                        #{attestation.schemaId}
+                        {formatAddress(attestation.schema_id)}
                       </Badge>
                     </Link>
                   </td>
                   <td className="p-4">
                     <div className="font-mono text-sm text-muted-foreground">
-                      {attestation.from.slice(0, 8)}...
-                      {attestation.from.slice(-6)}
+                      {formatAddress(attestation.creator)}
                     </div>
                   </td>
                   <td className="p-4">
                     <div className="font-mono text-sm text-muted-foreground">
-                      {attestation.to.slice(0, 8)}...{attestation.to.slice(-6)}
+                      {formatAddress(attestation.subject)}
                     </div>
                   </td>
-                  <td className="p-4">
-                    <Badge
-                      variant={
-                        attestation.type === "WITNESSED"
-                          ? "default"
-                          : "secondary"
-                      }
-                      className={
-                        attestation.type === "WITNESSED"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
-                      }
-                    >
-                      {attestation.type}
-                    </Badge>
-                  </td>
                   <td className="p-4 text-sm text-muted-foreground">
-                    {attestation.time}
-                  </td>
-                  <td className="p-4">
-                    <Badge
-                      variant={attestation.revoked ? "destructive" : "outline"}
-                    >
-                      {attestation.revoked ? "Yes" : "No"}
-                    </Badge>
+                    {formatTimestamp(attestation.timestamp_ms)}
                   </td>
                   <td className="p-4">
                     <div className="flex items-center gap-2">
-                      <Link href={`/attestations/${attestation.uid}`}>
+                      <Link href={`/attestations/${attestation.id}`}>
                         <Button variant="ghost" size="sm" title="View Details">
                           <Eye className="h-4 w-4" />
                         </Button>

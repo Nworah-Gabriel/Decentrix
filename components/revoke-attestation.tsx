@@ -1,15 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, X } from "lucide-react";
-import { useAttestationStore } from "@/lib/store";
+import { AlertTriangle, Shield, ArrowLeft } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAttestationStore } from "@/store/useAttestation";
+import Link from "next/link";
 
 interface RevokeAttestationProps {
   attestationId: string;
@@ -17,145 +16,194 @@ interface RevokeAttestationProps {
 
 export function RevokeAttestation({ attestationId }: RevokeAttestationProps) {
   const router = useRouter();
-  const { getAttestationById } = useAttestationStore();
-  const [reason, setReason] = useState("");
+  const { selectedAttestation, fetchAttestationById } = useAttestationStore();
   const [isLoading, setIsLoading] = useState(false);
-  const [confirmText, setConfirmText] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const attestation = getAttestationById(attestationId);
+  useEffect(() => {
+    const loadAttestation = async () => {
+      setLoading(true);
+      await fetchAttestationById(attestationId);
+      setLoading(false);
+    };
 
-  if (!attestation) {
+    loadAttestation();
+  }, [attestationId, fetchAttestationById]);
+
+  const handleRevoke = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Simulate API call for revoking attestation
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // In real implementation, this would call the revoke API
+      console.log("Revoking attestation:", attestationId);
+
+      router.push(`/attestations/${attestationId}`);
+    } catch (err) {
+      setError("Failed to revoke attestation. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (loading) {
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <p className="text-muted-foreground">Attestation not found</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (attestation.revoked) {
-    return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <X className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Already Revoked</h3>
-          <p className="text-muted-foreground">
-            This attestation has already been revoked.
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-muted-foreground text-lg">
+            Loading attestation...
           </p>
         </CardContent>
       </Card>
     );
   }
 
-  const handleRevoke = async () => {
-    if (confirmText !== "REVOKE") return;
+  if (!selectedAttestation) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground text-lg">Attestation not found</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            The requested attestation could not be found.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
-    setIsLoading(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setIsLoading(false);
-
-    // In real app, update the store or refetch data
-    router.push(`/attestations/${attestationId}`);
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 8)}...${address.slice(-6)}`;
   };
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Link href={`/attestations/${attestationId}`}>
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Attestation
+          </Button>
+        </Link>
+      </div>
+
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-red-600">
+          Revoke Attestation
+        </h1>
+        <p className="text-muted-foreground">
+          This action cannot be undone. Please review carefully before
+          proceeding.
+        </p>
+      </div>
+
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription>
+          <strong>Warning:</strong> Revoking this attestation will permanently
+          invalidate it. This action cannot be reversed.
+        </AlertDescription>
+      </Alert>
+
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-red-600">
-            <AlertTriangle className="h-5 w-5" />
-            Revoke Attestation
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Attestation Details
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <Alert>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Warning:</strong> Revoking an attestation is permanent and
-              cannot be undone. This action will mark the attestation as
-              invalid.
-            </AlertDescription>
-          </Alert>
-
-          <div className="space-y-4">
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label className="text-sm font-medium text-muted-foreground">
-                Attestation UID
-              </Label>
-              <div className="mt-1">
-                <code className="text-sm bg-muted px-2 py-1 rounded">
-                  {attestation.uid}
-                </code>
-              </div>
+              <label className="text-sm font-medium text-muted-foreground">
+                Attestation ID
+              </label>
+              <p className="font-mono text-sm mt-1">
+                {formatAddress(selectedAttestation.id)}
+              </p>
             </div>
-
             <div>
-              <Label className="text-sm font-medium text-muted-foreground">
+              <label className="text-sm font-medium text-muted-foreground">
+                Name
+              </label>
+              <p className="text-sm mt-1">{selectedAttestation.name}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">
+                Creator
+              </label>
+              <p className="font-mono text-sm mt-1">
+                {formatAddress(selectedAttestation.creator)}
+              </p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">
+                Subject
+              </label>
+              <p className="font-mono text-sm mt-1">
+                {formatAddress(selectedAttestation.subject)}
+              </p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-muted-foreground">
                 Schema
-              </Label>
-              <div className="mt-1">
-                <Badge variant="outline">#{attestation.schemaId}</Badge>
-              </div>
+              </label>
+              <Badge variant="outline" className="mt-1">
+                {formatAddress(selectedAttestation.schema_id)}
+              </Badge>
             </div>
-
             <div>
-              <Label className="text-sm font-medium text-muted-foreground">
-                Current Status
-              </Label>
-              <div className="mt-1">
-                <Badge
-                  variant="default"
-                  className="bg-green-100 text-green-800"
-                >
-                  Active
-                </Badge>
-              </div>
+              <label className="text-sm font-medium text-muted-foreground">
+                Status
+              </label>
+              <Badge variant="default" className="mt-1">
+                Active
+              </Badge>
             </div>
           </div>
         </CardContent>
       </Card>
 
+      {error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
-          <CardTitle>Revocation Details</CardTitle>
+          <CardTitle className="text-red-600">Confirm Revocation</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="reason">Reason for Revocation (Optional)</Label>
-            <textarea
-              id="reason"
-              className="w-full h-24 p-2 border rounded-md bg-background"
-              placeholder="Explain why you're revoking this attestation..."
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            />
-          </div>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            By clicking "Revoke Attestation" below, you confirm that you want to
+            permanently revoke this attestation. This will:
+          </p>
+          <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+            <li>Mark the attestation as revoked on the blockchain</li>
+            <li>Make it invalid for any future verification</li>
+            <li>Record the revocation timestamp permanently</li>
+            <li>Require gas fees for the transaction</li>
+          </ul>
 
-          <div className="space-y-2">
-            <Label htmlFor="confirm">
-              Type <strong>REVOKE</strong> to confirm
-            </Label>
-            <Input
-              id="confirm"
-              placeholder="REVOKE"
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-            />
-          </div>
-
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 pt-4">
             <Button
+              variant="destructive"
               onClick={handleRevoke}
-              disabled={confirmText !== "REVOKE" || isLoading}
+              disabled={isLoading}
               className="bg-red-600 hover:bg-red-700"
             >
               {isLoading ? "Revoking..." : "Revoke Attestation"}
             </Button>
-            <Button variant="outline" onClick={() => router.back()}>
-              Cancel
-            </Button>
+            <Link href={`/attestations/${attestationId}`}>
+              <Button variant="outline">Cancel</Button>
+            </Link>
           </div>
         </CardContent>
       </Card>

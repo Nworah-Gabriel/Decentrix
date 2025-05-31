@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Search, Menu, X, Github, Twitter, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
-import { WalletConnect } from "./wallet-connect";
+import { WalletConnect } from "./connection/wallet-connect";
 import {
   DropdownMenu,
   DropdownMenuContent,

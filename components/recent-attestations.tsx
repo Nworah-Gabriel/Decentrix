@@ -4,11 +4,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Eye } from "lucide-react";
-import { useAttestationStore } from "@/lib/store";
+import { useAttestationStore } from "@/store/useAttestation";
 import Link from "next/link";
 
 export function RecentAttestations() {
   const { recentAttestations } = useAttestationStore();
+
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(Number.parseInt(timestamp));
+    const now = new Date();
+    const diffInHours = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60 * 60)
+    );
+
+    if (diffInHours < 1) return "< 1 hour ago";
+    if (diffInHours < 24) return `${diffInHours} hours ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays} days ago`;
+    return date.toLocaleDateString();
+  };
 
   return (
     <Card>
@@ -26,19 +44,19 @@ export function RecentAttestations() {
             <thead>
               <tr className="border-b bg-muted/50">
                 <th className="text-left p-3 sm:p-4 font-medium text-sm sm:text-base">
-                  UID
+                  ID
+                </th>
+                <th className="text-left p-3 sm:p-4 font-medium text-sm sm:text-base">
+                  Name
                 </th>
                 <th className="text-left p-3 sm:p-4 font-medium text-sm sm:text-base">
                   Schema
                 </th>
                 <th className="text-left p-3 sm:p-4 font-medium text-sm sm:text-base">
-                  From
+                  Creator
                 </th>
                 <th className="text-left p-3 sm:p-4 font-medium text-sm sm:text-base">
-                  To
-                </th>
-                <th className="text-left p-3 sm:p-4 font-medium text-sm sm:text-base">
-                  Type
+                  Subject
                 </th>
                 <th className="text-left p-3 sm:p-4 font-medium text-sm sm:text-base">
                   Age
@@ -51,58 +69,45 @@ export function RecentAttestations() {
             <tbody>
               {recentAttestations.map((attestation) => (
                 <tr
-                  key={attestation.uid}
+                  key={attestation.id}
                   className="border-b hover:bg-muted/50 transition-colors"
                 >
                   <td className="p-3 sm:p-4">
                     <div className="font-mono text-xs sm:text-sm text-accent hover:text-accent/80 cursor-pointer">
-                      {attestation.uid.slice(0, 8)}...
-                      {attestation.uid.slice(-6)}
+                      {formatAddress(attestation.id)}
                     </div>
                   </td>
                   <td className="p-3 sm:p-4">
-                    <Link href={`/schemas/${attestation.schemaId}`}>
+                    <div className="font-medium text-xs sm:text-sm max-w-[150px] truncate">
+                      {attestation.name}
+                    </div>
+                  </td>
+                  <td className="p-3 sm:p-4">
+                    <Link href={`/schemas/${attestation.schema_id}`}>
                       <Badge
                         variant="secondary"
                         className="hover:bg-accent/10 cursor-pointer text-xs sm:text-sm"
                       >
-                        #{attestation.schemaId}
+                        {formatAddress(attestation.schema_id)}
                       </Badge>
                     </Link>
                   </td>
                   <td className="p-3 sm:p-4">
                     <div className="font-mono text-xs sm:text-sm text-muted-foreground">
-                      {attestation.from.slice(0, 6)}...
-                      {attestation.from.slice(-4)}
+                      {formatAddress(attestation.creator)}
                     </div>
                   </td>
                   <td className="p-3 sm:p-4">
                     <div className="font-mono text-xs sm:text-sm text-muted-foreground">
-                      {attestation.to.slice(0, 6)}...{attestation.to.slice(-4)}
+                      {formatAddress(attestation.subject)}
                     </div>
                   </td>
-                  <td className="p-3 sm:p-4">
-                    <Badge
-                      variant={
-                        attestation.type === "WITNESSED"
-                          ? "default"
-                          : "secondary"
-                      }
-                      className={
-                        attestation.type === "WITNESSED"
-                          ? "bg-accent/10 text-accent hover:bg-accent/20"
-                          : ""
-                      }
-                    >
-                      {attestation.type}
-                    </Badge>
-                  </td>
                   <td className="p-3 sm:p-4 text-xs sm:text-sm text-muted-foreground">
-                    {attestation.age}
+                    {formatTimestamp(attestation.timestamp_ms)}
                   </td>
                   <td className="p-3 sm:p-4">
                     <div className="flex items-center gap-1 sm:gap-2">
-                      <Link href={`/attestations/${attestation.uid}`}>
+                      <Link href={`/attestations/${attestation.id}`}>
                         <Button variant="ghost" size="sm">
                           <Eye className="h-4 w-4" />
                         </Button>

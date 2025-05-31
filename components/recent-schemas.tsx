@@ -4,11 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, FileText } from "lucide-react";
-import { useAttestationStore } from "@/lib/store";
+import { useSchemaStore } from "@/store/useSchema";
 import Link from "next/link";
 
 export function RecentSchemas() {
-  const { recentSchemas } = useAttestationStore();
+  const { recentSchemas } = useSchemaStore();
+
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
 
   return (
     <Card className="h-fit border-2 border-border/50 shadow-sm hover:border-border/80 transition-colors">
@@ -43,14 +47,14 @@ export function RecentSchemas() {
                     variant="outline"
                     className="flex-shrink-0 text-xs sm:text-sm bg-muted/50"
                   >
-                    #{schema.id}
+                    {formatAddress(schema.id)}
                   </Badge>
                   <span className="font-medium truncate text-sm sm:text-base">
                     {schema.name}
                   </span>
                 </div>
-                <div className="text-xs sm:text-sm text-muted-foreground">
-                  {schema.attestationCount.toLocaleString()} attestations
+                <div className="text-xs sm:text-sm text-muted-foreground truncate">
+                  {schema.description}
                 </div>
               </div>
             </div>

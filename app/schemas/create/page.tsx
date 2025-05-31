@@ -5,76 +5,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Plus, X, Info, Code, FileText } from "lucide-react";
+import { ArrowLeft, Info, Code, FileText } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-
-interface SchemaField {
-  name: string;
-  type: string;
-  required: boolean;
-  description: string;
-}
+import { useSchemaStore } from "@/store/useSchema";
 
 export default function CreateSchemaPage() {
   const router = useRouter();
+  const { createSchema } = useSchemaStore();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    revocable: true,
-    resolver: "",
+    definitionJson: "",
   });
-  const [fields, setFields] = useState<SchemaField[]>([
-    { name: "", type: "string", required: true, description: "" },
-  ]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-
-  const fieldTypes = [
-    { value: "string", label: "String", description: "Text data" },
-    { value: "uint256", label: "Number", description: "Positive integer" },
-    { value: "bool", label: "Boolean", description: "True/false value" },
-    { value: "address", label: "Address", description: "Sui address" },
-    { value: "bytes32", label: "Hash", description: "32-byte hash" },
-    { value: "bytes", label: "Bytes", description: "Arbitrary data" },
-  ];
-
-  const addField = () => {
-    setFields([
-      ...fields,
-      { name: "", type: "string", required: true, description: "" },
-    ]);
-  };
-
-  const removeField = (index: number) => {
-    if (fields.length > 1) {
-      setFields(fields.filter((_, i) => i !== index));
-    }
-  };
-
-  const updateField = (index: number, updates: Partial<SchemaField>) => {
-    const newFields = [...fields];
-    newFields[index] = { ...newFields[index], ...updates };
-    setFields(newFields);
-  };
-
-  const generateSchemaString = () => {
-    return fields
-      .filter((field) => field.name.trim())
-      .map((field) => `${field.type} ${field.name}`)
-      .join(", ");
-  };
 
   const validateStep = (stepNumber: number) => {
     const newErrors: Record<string, string> = {};
@@ -86,17 +34,14 @@ export default function CreateSchemaPage() {
     }
 
     if (stepNumber === 2) {
-      fields.forEach((field, index) => {
-        if (!field.name.trim()) {
-          newErrors[`field_${index}_name`] = "Field name is required";
+      if (!formData.definitionJson.trim()) {
+        newErrors.definitionJson = "Definition JSON is required";
+      } else {
+        try {
+          JSON.parse(formData.definitionJson);
+        } catch {
+          newErrors.definitionJson = "Invalid JSON format";
         }
-        if (field.name && !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(field.name)) {
-          newErrors[`field_${index}_name`] = "Invalid field name format";
-        }
-      });
-
-      if (fields.filter((f) => f.name.trim()).length === 0) {
-        newErrors.fields = "At least one field is required";
       }
     }
 
@@ -116,20 +61,20 @@ export default function CreateSchemaPage() {
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const result = await createSchema({
+        name: formData.name,
+        description: formData.description,
+        definitionJson: formData.definitionJson,
+      });
 
-      const schemaData = {
-        ...formData,
-        fields: fields.filter((f) => f.name.trim()),
-        schema: generateSchemaString(),
-      };
-
-      console.log("Creating schema:", schemaData);
-
-      router.push("/schemas");
+      if (result) {
+        router.push("/schemas");
+      } else {
+        setErrors({ submit: "Failed to create schema" });
+      }
     } catch (error) {
       console.error("Error creating schema:", error);
+      setErrors({ submit: "Failed to create schema" });
     } finally {
       setIsLoading(false);
     }
@@ -181,39 +126,9 @@ export default function CreateSchemaPage() {
                   <p className="text-sm text-red-500">{errors.description}</p>
                 )}
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="resolver">Resolver Contract (Optional)</Label>
-                <Input
-                  id="resolver"
-                  placeholder="0x... (custom resolver contract address)"
-                  value={formData.resolver}
-                  onChange={(e) =>
-                    setFormData({ ...formData, resolver: e.target.value })
-                  }
-                />
-                <p className="text-xs text-muted-foreground">
-                  Custom logic for attestation validation and processing
-                </p>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="revocable"
-                  checked={formData.revocable}
-                  onChange={(e) =>
-                    setFormData({ ...formData, revocable: e.target.checked })
-                  }
-                  className="rounded"
-                />
-                <Label htmlFor="revocable">
-                  Allow attestations to be revocable
-                </Label>
-              </div>
             </div>
 
-            <Button onClick={handleNext}>Continue to Fields</Button>
+            <Button onClick={handleNext}>Continue to Definition</Button>
           </div>
         );
 
@@ -221,110 +136,52 @@ export default function CreateSchemaPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold mb-4">Schema Fields</h3>
+              <h3 className="text-lg font-semibold mb-4">Schema Definition</h3>
               <p className="text-sm text-muted-foreground mb-6">
-                Define the data structure for attestations using this schema.
+                Define the JSON structure for attestations using this schema.
               </p>
             </div>
 
             <div className="space-y-4">
-              {fields.map((field, index) => (
-                <Card key={index} className="p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-medium">Field {index + 1}</h4>
-                    {fields.length > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeField(index)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Field Name *</Label>
-                      <Input
-                        placeholder="e.g., name, score, verified"
-                        value={field.name}
-                        onChange={(e) =>
-                          updateField(index, { name: e.target.value })
-                        }
-                        className={
-                          errors[`field_${index}_name`] ? "border-red-500" : ""
-                        }
-                      />
-                      {errors[`field_${index}_name`] && (
-                        <p className="text-sm text-red-500">
-                          {errors[`field_${index}_name`]}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Field Type *</Label>
-                      <Select
-                        value={field.type}
-                        onValueChange={(value) =>
-                          updateField(index, { type: value })
-                        }
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select an option" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {/* Replace the following with your mapped options */}
-                          {fieldTypes.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="md:col-span-2 space-y-2">
-                      <Label>Description (Optional)</Label>
-                      <Input
-                        placeholder="Describe what this field represents..."
-                        value={field.description}
-                        onChange={(e) =>
-                          updateField(index, { description: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={field.required}
-                          onChange={(e) =>
-                            updateField(index, { required: e.target.checked })
-                          }
-                          className="rounded"
-                        />
-                        <Label>Required field</Label>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-
-              {errors.fields && (
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>{errors.fields}</AlertDescription>
-                </Alert>
-              )}
-
-              <Button variant="outline" onClick={addField} className="w-full">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Field
-              </Button>
+              <div className="space-y-2">
+                <Label htmlFor="definitionJson">Definition JSON *</Label>
+                <textarea
+                  id="definitionJson"
+                  className={`w-full h-64 p-3 border rounded-md bg-background font-mono text-sm ${
+                    errors.definitionJson ? "border-red-500" : ""
+                  }`}
+                  placeholder={`{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Full name of the person"
+    },
+    "verified": {
+      "type": "boolean",
+      "description": "Whether the identity is verified"
+    },
+    "score": {
+      "type": "number",
+      "description": "Verification score from 0-100"
+    }
+  },
+  "required": ["name", "verified"]
+}`}
+                  value={formData.definitionJson}
+                  onChange={(e) =>
+                    setFormData({ ...formData, definitionJson: e.target.value })
+                  }
+                />
+                {errors.definitionJson && (
+                  <p className="text-sm text-red-500">
+                    {errors.definitionJson}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Enter a valid JSON schema definition
+                </p>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -366,62 +223,15 @@ export default function CreateSchemaPage() {
                     </p>
 
                     <div className="space-y-2">
-                      <h4 className="font-medium">Configuration</h4>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">
-                            Revocable:
-                          </span>
-                          <Badge
-                            variant={
-                              formData.revocable ? "default" : "secondary"
-                            }
-                          >
-                            {formData.revocable ? "Yes" : "No"}
-                          </Badge>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">
-                            Resolver:
-                          </span>
-                          <span>{formData.resolver || "None"}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <h4 className="font-medium">
-                        Fields ({fields.filter((f) => f.name.trim()).length})
-                      </h4>
-                      <div className="space-y-2">
-                        {fields
-                          .filter((f) => f.name.trim())
-                          .map((field, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center justify-between p-2 border rounded"
-                            >
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline">{field.type}</Badge>
-                                <span className="font-medium">
-                                  {field.name}
-                                </span>
-                                {field.required && (
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-xs"
-                                  >
-                                    Required
-                                  </Badge>
-                                )}
-                              </div>
-                              {field.description && (
-                                <span className="text-sm text-muted-foreground">
-                                  {field.description}
-                                </span>
-                              )}
-                            </div>
-                          ))}
+                      <h4 className="font-medium">Schema Definition</h4>
+                      <div className="bg-muted p-4 rounded-lg">
+                        <pre className="text-sm overflow-x-auto">
+                          {JSON.stringify(
+                            JSON.parse(formData.definitionJson),
+                            null,
+                            2
+                          )}
+                        </pre>
                       </div>
                     </div>
                   </CardContent>
@@ -433,19 +243,8 @@ export default function CreateSchemaPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Code className="h-5 w-5" />
-                      Generated Schema
+                      Schema JSON
                     </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="bg-muted p-4 rounded-lg">
-                      <code className="text-sm">{generateSchemaString()}</code>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Schema JSON</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <pre className="text-sm bg-muted p-4 rounded-lg overflow-x-auto">
@@ -453,17 +252,7 @@ export default function CreateSchemaPage() {
                         {
                           name: formData.name,
                           description: formData.description,
-                          revocable: formData.revocable,
-                          resolver: formData.resolver || null,
-                          fields: fields
-                            .filter((f) => f.name.trim())
-                            .map((f) => ({
-                              name: f.name,
-                              type: f.type,
-                              required: f.required,
-                              description: f.description || null,
-                            })),
-                          schema: generateSchemaString(),
+                          definitionJson: JSON.parse(formData.definitionJson),
                         },
                         null,
                         2
@@ -473,6 +262,13 @@ export default function CreateSchemaPage() {
                 </Card>
               </TabsContent>
             </Tabs>
+
+            {errors.submit && (
+              <Alert variant="destructive">
+                <Info className="h-4 w-4" />
+                <AlertDescription>{errors.submit}</AlertDescription>
+              </Alert>
+            )}
 
             <Alert>
               <Info className="h-4 w-4" />

@@ -3,7 +3,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import {
   Copy,
@@ -14,39 +13,13 @@ import {
   FileText,
   AlertTriangle,
   CheckCircle,
-  XCircle,
   Hash,
   Eye,
   Download,
   Share2,
 } from "lucide-react";
-import { useState } from "react";
-
-// Mock store hook - replace with your actual implementation
-const useAttestationStore = () => ({
-  getAttestationById: (id: string) => ({
-    uid: "0x1234567890abcdef1234567890abcdef12345678",
-    schemaId: "0xa1b2c3d4e5f6789012345678901234567890abcd",
-    from: "0x742d35Cc6634C0532925a3b8D56c58BBB8c5eB8C",
-    to: "0x8ba1f109551bD432803012645Hac136c99b42c61",
-    type: "WITNESSED" as const,
-    age: "2 hours ago",
-    time: "2025-05-30T14:30:00Z",
-    revoked: false,
-    data: {
-      message: "Identity verification completed",
-      score: 95,
-      verified: true,
-      timestamp: "2025-05-30T14:30:00Z",
-      metadata: {
-        verificationMethod: "KYC",
-        documentType: "passport",
-        country: "US",
-        ipfsHash: "QmXYZ123456789abcdef",
-      },
-    },
-  }),
-});
+import { useState, useEffect } from "react";
+import { useAttestationStore } from "@/store/useAttestation";
 
 interface AttestationDetailProps {
   id: string;
@@ -55,11 +28,34 @@ interface AttestationDetailProps {
 export default function AttestationDetail({
   id = "sample-id",
 }: AttestationDetailProps) {
-  const { getAttestationById } = useAttestationStore();
-  const attestation = getAttestationById(id);
+  const { selectedAttestation, fetchAttestationById } = useAttestationStore();
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (!attestation) {
+  useEffect(() => {
+    const loadAttestation = async () => {
+      setLoading(true);
+      await fetchAttestationById(id);
+      setLoading(false);
+    };
+
+    loadAttestation();
+  }, [id, fetchAttestationById]);
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-muted-foreground text-lg">
+            Loading attestation...
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!selectedAttestation) {
     return (
       <Card>
         <CardContent className="p-8 text-center">
@@ -88,28 +84,25 @@ export default function AttestationDetail({
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  const getStatusColor = () => {
-    if (attestation.revoked) return "destructive";
-    return attestation.type === "WITNESSED" ? "default" : "secondary";
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(Number.parseInt(timestamp));
+    return date.toLocaleString();
   };
 
-  const getStatusIcon = () => {
-    if (attestation.revoked) return <XCircle className="h-4 w-4" />;
-    return <CheckCircle className="h-4 w-4" />;
+  const parseDefinitionJson = (definitionJson: string) => {
+    try {
+      return JSON.parse(definitionJson);
+    } catch {
+      return {};
+    }
   };
+
+  const attestationData = parseDefinitionJson(
+    selectedAttestation.definition_json
+  );
 
   return (
-    <div className="space-y-6 ">
-      {/* Status Alert */}
-      {attestation.revoked && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            This attestation has been revoked and is no longer valid.
-          </AlertDescription>
-        </Alert>
-      )}
-
+    <div className="space-y-6">
       {/* Header Card */}
       <Card>
         <CardHeader>
@@ -119,12 +112,9 @@ export default function AttestationDetail({
               Attestation Details
             </CardTitle>
             <div className="flex items-center gap-2">
-              <Badge
-                variant={getStatusColor()}
-                className="flex items-center gap-1"
-              >
-                {getStatusIcon()}
-                {attestation.revoked ? "REVOKED" : attestation.type}
+              <Badge variant="default" className="flex items-center gap-1">
+                <CheckCircle className="h-4 w-4" />
+                ACTIVE
               </Badge>
               <Button variant="outline" size="sm">
                 <Share2 className="h-4 w-4 mr-2" />
@@ -137,30 +127,44 @@ export default function AttestationDetail({
           {/* Primary Information Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-4">
-              {/* UID */}
+              {/* ID */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground flex items-center gap-1">
                   <Hash className="h-3 w-3" />
-                  Unique Identifier (UID)
+                  Attestation ID
                 </label>
                 <div className="flex items-center gap-2 mt-2">
                   <code className="flex-1 p-3 bg-muted rounded-md text-sm font-mono break-all">
-                    {attestation.uid}
+                    {selectedAttestation.id}
                   </code>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => copyToClipboard(attestation.uid, "uid")}
+                    onClick={() =>
+                      copyToClipboard(selectedAttestation.id, "id")
+                    }
                     className="shrink-0"
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
-                {copiedField === "uid" && (
+                {copiedField === "id" && (
                   <p className="text-xs text-green-600 mt-1">
                     Copied to clipboard!
                   </p>
                 )}
+              </div>
+
+              {/* Name */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">
+                  Name
+                </label>
+                <div className="mt-2">
+                  <p className="p-3 bg-muted rounded-md text-sm">
+                    {selectedAttestation.name}
+                  </p>
+                </div>
               </div>
 
               {/* Schema */}
@@ -170,7 +174,7 @@ export default function AttestationDetail({
                 </label>
                 <div className="flex items-center gap-2 mt-2">
                   <Badge variant="outline" className="font-mono text-xs">
-                    {formatAddress(attestation.schemaId)}
+                    {formatAddress(selectedAttestation.schema_id)}
                   </Badge>
                   <Button variant="ghost" size="sm" title="View Schema">
                     <ExternalLink className="h-4 w-4" />
@@ -179,7 +183,7 @@ export default function AttestationDetail({
                     variant="ghost"
                     size="sm"
                     onClick={() =>
-                      copyToClipboard(attestation.schemaId, "schema")
+                      copyToClipboard(selectedAttestation.schema_id, "schema")
                     }
                   >
                     <Copy className="h-4 w-4" />
@@ -192,50 +196,54 @@ export default function AttestationDetail({
                 )}
               </div>
 
-              {/* Attester */}
+              {/* Creator */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground">
-                  Attester (From)
+                  Creator
                 </label>
                 <div className="flex items-center gap-2 mt-2">
                   <code className="flex-1 p-3 bg-muted rounded-md text-sm font-mono">
-                    {attestation.from}
+                    {selectedAttestation.creator}
                   </code>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => copyToClipboard(attestation.from, "from")}
+                    onClick={() =>
+                      copyToClipboard(selectedAttestation.creator, "creator")
+                    }
                     className="shrink-0"
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
-                {copiedField === "from" && (
+                {copiedField === "creator" && (
                   <p className="text-xs text-green-600 mt-1">
                     Copied to clipboard!
                   </p>
                 )}
               </div>
 
-              {/* Recipient */}
+              {/* Subject */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground">
-                  Recipient (To)
+                  Subject
                 </label>
                 <div className="flex items-center gap-2 mt-2">
                   <code className="flex-1 p-3 bg-muted rounded-md text-sm font-mono">
-                    {attestation.to}
+                    {selectedAttestation.subject}
                   </code>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => copyToClipboard(attestation.to, "to")}
+                    onClick={() =>
+                      copyToClipboard(selectedAttestation.subject, "subject")
+                    }
                     className="shrink-0"
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
-                {copiedField === "to" && (
+                {copiedField === "subject" && (
                   <p className="text-xs text-green-600 mt-1">
                     Copied to clipboard!
                   </p>
@@ -251,7 +259,7 @@ export default function AttestationDetail({
                   <div>
                     <p className="text-sm font-medium">Created</p>
                     <p className="text-xs text-muted-foreground">
-                      {attestation.age}
+                      {formatTimestamp(selectedAttestation.timestamp_ms)}
                     </p>
                   </div>
                 </div>
@@ -259,9 +267,9 @@ export default function AttestationDetail({
                 <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md">
                   <User className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-sm font-medium">Attestor</p>
+                    <p className="text-sm font-medium">Creator</p>
                     <p className="text-xs text-muted-foreground font-mono">
-                      {formatAddress(attestation.from)}
+                      {formatAddress(selectedAttestation.creator)}
                     </p>
                   </div>
                 </div>
@@ -271,7 +279,7 @@ export default function AttestationDetail({
                   <div>
                     <p className="text-sm font-medium">Schema</p>
                     <p className="text-xs text-muted-foreground font-mono">
-                      {formatAddress(attestation.schemaId)}
+                      {formatAddress(selectedAttestation.schema_id)}
                     </p>
                   </div>
                 </div>
@@ -279,9 +287,9 @@ export default function AttestationDetail({
                 <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md">
                   <Eye className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-sm font-medium">Type</p>
-                    <p className="text-xs text-muted-foreground">
-                      {attestation.type}
+                    <p className="text-sm font-medium">Issuer</p>
+                    <p className="text-xs text-muted-foreground font-mono">
+                      {formatAddress(selectedAttestation.issuer)}
                     </p>
                   </div>
                 </div>
@@ -289,14 +297,6 @@ export default function AttestationDetail({
 
               {/* Action Buttons */}
               <div className="space-y-2 pt-4">
-                {/* <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  size="sm"
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  View on Block Explorer
-                </Button> */}
                 <Button
                   variant="outline"
                   className="w-full justify-start"
@@ -321,49 +321,17 @@ export default function AttestationDetail({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {/* Data Summary */}
-            {attestation.data && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-green-600">
-                    {attestation.data.score || "N/A"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Verification Score
-                  </p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold">
-                    {attestation.data.verified ? "✓" : "✗"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Verified Status
-                  </p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold">
-                    {attestation.data.metadata?.documentType?.toUpperCase() ||
-                      "N/A"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Document Type</p>
-                </div>
-              </div>
-            )}
-
             <Separator />
 
             {/* Raw Data */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-medium">Raw Attestation Data</h4>
+                <h4 className="text-sm font-medium">Definition JSON</h4>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() =>
-                    copyToClipboard(
-                      JSON.stringify(attestation.data, null, 2),
-                      "data"
-                    )
+                    copyToClipboard(selectedAttestation.definition_json, "data")
                   }
                 >
                   <Copy className="h-4 w-4 mr-2" />
@@ -372,7 +340,7 @@ export default function AttestationDetail({
               </div>
               <div className="bg-muted p-4 rounded-lg border">
                 <pre className="text-xs overflow-x-auto whitespace-pre-wrap">
-                  {JSON.stringify(attestation.data, null, 2)}
+                  {JSON.stringify(attestationData, null, 2)}
                 </pre>
               </div>
               {copiedField === "data" && (
@@ -381,6 +349,30 @@ export default function AttestationDetail({
                 </p>
               )}
             </div>
+
+            {/* Data Hash */}
+            {selectedAttestation.data_hash &&
+              selectedAttestation.data_hash.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-3">Data Hashes</h4>
+                  <div className="space-y-2">
+                    {selectedAttestation.data_hash.map((hash, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <code className="flex-1 p-2 bg-muted rounded text-xs font-mono">
+                          {hash}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(hash, `hash_${index}`)}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
           </div>
         </CardContent>
       </Card>
@@ -396,17 +388,22 @@ export default function AttestationDetail({
               <h4 className="font-medium mb-2">Blockchain Information</h4>
               <ul className="space-y-1 text-sm text-muted-foreground">
                 <li>Network: Sui Blockchain</li>
-                <li>Block: #1,234,567</li>
-                <li>Transaction: 0xabc123...</li>
-                <li>Gas Used: 150,000</li>
+                <li>
+                  Created: {formatTimestamp(selectedAttestation.timestamp_ms)}
+                </li>
+                <li>Status: Active</li>
               </ul>
             </div>
             <div>
               <h4 className="font-medium mb-2">Attestation Lifecycle</h4>
               <ul className="space-y-1 text-sm text-muted-foreground">
-                <li>✓ Created: {attestation.time}</li>
-                <li>✓ Indexed: {attestation.time}</li>
-                <li>{attestation.revoked ? "✗ Revoked" : "✓ Active"}</li>
+                <li>
+                  ✓ Created: {formatTimestamp(selectedAttestation.timestamp_ms)}
+                </li>
+                <li>
+                  ✓ Indexed: {formatTimestamp(selectedAttestation.timestamp_ms)}
+                </li>
+                <li>✓ Active</li>
                 <li>◦ Expires: Never</li>
               </ul>
             </div>

@@ -13,7 +13,7 @@ import {
   ChevronRight,
   Plus,
 } from "lucide-react";
-import { useAttestationStore } from "@/lib/store";
+import { useSchemaStore } from "@/store/useSchema";
 import { useState } from "react";
 import Link from "next/link";
 
@@ -32,7 +32,7 @@ export function SchemasTable({
   limit,
   filterByCreator,
 }: SchemasTableProps) {
-  const { allSchemas: schemas } = useAttestationStore();
+  const { schemas } = useSchemaStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -40,7 +40,7 @@ export function SchemasTable({
   const filteredSchemas = schemas.filter((schema) => {
     const matchesSearch =
       schema.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      schema.schema.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      schema.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       schema.creator.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesCreator =
@@ -63,6 +63,15 @@ export function SchemasTable({
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
+  };
+
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 8)}...${address.slice(-6)}`;
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(Number.parseInt(timestamp));
+    return date.toLocaleDateString();
   };
 
   return (
@@ -114,95 +123,86 @@ export function SchemasTable({
               <tr className="border-b bg-muted/50">
                 <th className="text-left p-4 font-medium">ID</th>
                 <th className="text-left p-4 font-medium">Name</th>
-                <th className="text-left p-4 font-medium">Schema</th>
+                <th className="text-left p-4 font-medium">Description</th>
                 <th className="text-left p-4 font-medium">Creator</th>
-                <th className="text-left p-4 font-medium">Resolver</th>
-                <th className="text-left p-4 font-medium">Revocable</th>
-                <th className="text-left p-4 font-medium">Attestations</th>
                 <th className="text-left p-4 font-medium">Created</th>
                 <th className="text-left p-4 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {paginatedSchemas.map((schema) => (
-                <tr
-                  key={schema.id}
-                  className="border-b hover:bg-muted/30 transition-colors"
-                >
-                  <td className="p-4">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-blue-600" />
-                      <Link href={`/schemas/${schema.id}`}>
-                        <Badge
-                          variant="outline"
-                          className="font-mono hover:bg-blue-50 cursor-pointer"
-                        >
-                          #{schema.id}
-                        </Badge>
-                      </Link>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <Link href={`/schemas/${schema.id}`}>
-                      <div className="font-medium text-sm max-w-[200px] truncate hover:text-blue-600 cursor-pointer">
-                        {schema.name}
-                      </div>
-                    </Link>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-2">
-                      <code className="text-xs bg-muted px-2 py-1 rounded max-w-[300px] truncate">
-                        {schema.schema}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(schema.schema)}
-                        title="Copy Schema"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="font-mono text-sm text-muted-foreground">
-                      {schema.creator.slice(0, 8)}...{schema.creator.slice(-6)}
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="font-mono text-xs text-muted-foreground">
-                      {schema.resolver
-                        ? `${schema.resolver.slice(
-                            0,
-                            8
-                          )}...${schema.resolver.slice(-6)}`
-                        : "None"}
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <Badge variant={schema.revocable ? "default" : "secondary"}>
-                      {schema.revocable ? "Yes" : "No"}
-                    </Badge>
-                  </td>
-                  <td className="p-4">
-                    <div className="text-sm font-medium">
-                      {schema.attestationCount.toLocaleString()}
-                    </div>
-                  </td>
-                  <td className="p-4 text-sm text-muted-foreground">
-                    {schema.createdAt}
-                  </td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-2">
-                      <Link href={`/schemas/${schema.id}`}>
-                        <Button variant="ghost" size="sm" title="View Details">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                    </div>
+              {paginatedSchemas.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-6 text-center">
+                    <p className="text-muted-foreground">
+                      No schemas available
+                    </p>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                paginatedSchemas.map((schema) => (
+                  <tr
+                    key={schema.id}
+                    className="border-b hover:bg-muted/30 transition-colors"
+                  >
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-blue-600" />
+                        <Link href={`/schemas/${schema.id}`}>
+                          <Badge
+                            variant="outline"
+                            className="font-mono hover:bg-blue-50 cursor-pointer"
+                          >
+                            {formatAddress(schema.id)}
+                          </Badge>
+                        </Link>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <Link href={`/schemas/${schema.id}`}>
+                        <div className="font-medium text-sm max-w-[200px] truncate hover:text-blue-600 cursor-pointer">
+                          {schema.name}
+                        </div>
+                      </Link>
+                    </td>
+                    <td className="p-4">
+                      <div className="text-sm text-muted-foreground max-w-[300px] truncate">
+                        {schema.description}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="font-mono text-sm text-muted-foreground">
+                        {formatAddress(schema.creator)}
+                      </div>
+                    </td>
+                    <td className="p-4 text-sm text-muted-foreground">
+                      {formatTimestamp(schema.timestamp_ms)}
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Link href={`/schemas/${schema.id}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            title="View Details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            copyToClipboard(schema.definition_json)
+                          }
+                          title="Copy Definition"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

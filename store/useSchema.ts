@@ -1,6 +1,8 @@
 import { API_URL } from "@/constants";
 import { create } from "zustand";
 
+// --- Types and Interfaces ---
+
 export interface Schema {
   id: string;
   name: string;
@@ -14,32 +16,12 @@ export interface Schema {
   timestamp_ms: string;
 }
 
-// Response for multiple schemas
-export interface SchemasResponse {
-  schemas: Schema[];
-  hasNextPage: boolean;
-  nextCursor: string;
-}
-
-// Response for single schema
-export interface SchemaResponse {
-  version: string;
-  digest: string;
-  type: string;
-  owner: any;
-  previousTransaction: string;
-  storageRebate: string;
-  content: Schema;
-}
-
-// Payload to create a new schema
 export interface NewSchemaPayload {
   name: string;
   description: string;
   definitionJson: string;
 }
 
-// Response after creating a new schema
 export interface NewSchemaResponse {
   message: string;
   transactionDigest: string;
@@ -48,91 +30,76 @@ export interface NewSchemaResponse {
 }
 
 interface SchemaStore {
-  allSchemas: Schema[];
+  schemas: Schema[];
   recentSchemas: Schema[];
-  schemas: Schema[]; // could be same as allSchemas, you might remove duplicates here
   selectedSchema?: Schema | null;
+  loading: boolean;
+  error?: string | null;
 
   fetchSchemas: () => Promise<void>;
-  setSchemas: (data: Schema[]) => void;
-
   fetchSchemaById: (id: string) => Promise<void>;
-  setSelectedSchema: (schema: Schema | null) => void;
-
   createSchema: (
     payload: NewSchemaPayload
   ) => Promise<NewSchemaResponse | undefined>;
+
+  setSelectedSchema: (schema: Schema | null) => void;
 }
 
 export const useSchemaStore = create<SchemaStore>((set, get) => ({
-  allSchemas: [],
-  recentSchemas: [],
   schemas: [],
+  recentSchemas: [],
   selectedSchema: null,
-
-  setSchemas: (data) => {
-    set({
-      allSchemas: data,
-      recentSchemas: data.slice(0, 6),
-      schemas: data,
-    });
-  },
+  loading: false,
+  error: null,
 
   fetchSchemas: async () => {
+    set({ loading: true, error: null });
     try {
-      const response = await fetch(`${API_URL}/schemas`);
-      if (!response.ok)
-        throw new Error(`Failed to fetch schemas: ${response.statusText}`);
-
-      const data: Schema[] = await response.json();
-      get().setSchemas(data);
-    } catch (error) {
-      console.error("Error fetching schemas:", error);
-      // optionally set empty or error state here
+      const res = await fetch(`${API_URL}/schemas`);
+      if (!res.ok) throw new Error(`Error: ${res.statusText}`);
+      const data = await res.json();
+      set({
+        schemas: data.schemas,
+        recentSchemas: data.schemas.slice(0, 6),
+        loading: false,
+      });
+    } catch (err: any) {
+      set({ error: err.message, loading: false });
     }
   },
 
   fetchSchemaById: async (id: string) => {
+    set({ loading: true, error: null });
     try {
-      const response = await fetch(`${API_URL}/schemas/${id}`);
-      if (!response.ok)
-        throw new Error(`Failed to fetch schema: ${response.statusText}`);
-
-      const data: SchemaResponse = await response.json();
-      // Assuming you want to save the `content` part (Schema)
-      get().setSelectedSchema(data.content);
-    } catch (error) {
-      console.error("Error fetching schema by id:", error);
-      get().setSelectedSchema(null);
+      const res = await fetch(`${API_URL}/schemas/${id}`);
+      if (!res.ok) throw new Error(`Error: ${res.statusText}`);
+      const data = await res.json();
+      set({ selectedSchema: data.content, loading: false });
+    } catch (err: any) {
+      set({ error: err.message, loading: false });
     }
-  },
-
-  setSelectedSchema: (schema) => {
-    set({ selectedSchema: schema });
   },
 
   createSchema: async (payload: NewSchemaPayload) => {
+    set({ loading: true, error: null });
     try {
-      const response = await fetch(`${API_URL}/schemas`, {
+      const res = await fetch(`${API_URL}/schemas`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
-      if (!response.ok)
-        throw new Error(`Failed to create schema: ${response.statusText}`);
-
-      const data: NewSchemaResponse = await response.json();
-
-      // Optionally fetch schemas again or update store accordingly
+      if (!res.ok) throw new Error(`Error: ${res.statusText}`);
+      const result = await res.json();
+      // Refresh list after creation
       await get().fetchSchemas();
-
-      return data;
-    } catch (error) {
-      console.error("Error creating schema:", error);
+      return result as NewSchemaResponse;
+    } catch (err: any) {
+      set({ error: err.message, loading: false });
       return undefined;
     }
+  },
+
+  setSelectedSchema: (schema: Schema | null) => {
+    set({ selectedSchema: schema });
   },
 }));

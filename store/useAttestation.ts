@@ -1,9 +1,9 @@
-import { API_URL } from "@/constants";
-import { Stats } from "@/types";
 import { create } from "zustand";
-import { useSchemaStore } from "./useSchema";
+import { API_URL } from "@/constants";
+import { useSchemaStore } from "@/store/useSchema";
+import { Stats } from "@/types";
 
-//Attestation
+// Interfaces
 export interface Attestation {
   id: string;
   name: string;
@@ -17,32 +17,12 @@ export interface Attestation {
   timestamp_ms: string;
 }
 
-// Response for multiple attestations
-export interface AttestationsResponse {
-  attestations: Attestation[];
-  hasNextPage: boolean;
-  nextCursor: string;
-}
-
-// Response for a single attestation
-export interface AttestationResponse {
-  version: string;
-  digest: string;
-  type: string;
-  owner: any;
-  previousTransaction: string;
-  storageRebate: string;
-  content: Attestation;
-}
-
-// Payload to create a new attestation
 export interface NewAttestationPayload {
   subjectAddress: string;
   dataToAttest: string;
   schemaObjectId: string;
 }
 
-// Response after creating new attestation
 export interface NewAttestationResponse {
   message: string;
   transactionDigest: string;
@@ -56,20 +36,21 @@ interface AttestationStore {
   recentAttestations: Attestation[];
   attestations: Attestation[];
   selectedAttestation?: Attestation | null;
+  loading: boolean;
+  error?: string | null;
 
   fetchAttestations: () => Promise<void>;
-  setAttestations: (data: Attestation[]) => void;
-
   fetchAttestationById: (id: string) => Promise<void>;
-  setSelectedAttestation: (attestation: Attestation | null) => void;
-
   createAttestation: (
     payload: NewAttestationPayload
   ) => Promise<NewAttestationResponse | undefined>;
 
+  setAttestations: (data: Attestation[]) => void;
+  setSelectedAttestation: (attestation: Attestation | null) => void;
   refreshStats: () => void;
 }
 
+// Zustand Store
 export const useAttestationStore = create<AttestationStore>((set, get) => ({
   stats: {
     totalAttestations: 0,
@@ -80,96 +61,87 @@ export const useAttestationStore = create<AttestationStore>((set, get) => ({
   recentAttestations: [],
   attestations: [],
   selectedAttestation: null,
+  loading: false,
+  error: null,
 
+  // Setters
   setAttestations: (data) => {
-    // Get total schemas count from schema store
-    const totalSchemas = useSchemaStore.getState().allSchemas.length;
-
+    const totalSchemas = useSchemaStore.getState().schemas.length;
     set({
       allAttestations: data,
       recentAttestations: data.slice(0, 8),
       attestations: data,
       stats: {
-        ...get().stats,
         totalAttestations: data.length,
         totalSchemas,
+        uniqueAttestors: new Set(data.map((a) => a.creator)).size,
       },
     });
-  },
-
-  fetchAttestations: async () => {
-    try {
-      const response = await fetch(`${API_URL}/attestations`);
-      if (!response.ok)
-        throw new Error(`Failed to fetch attestations: ${response.statusText}`);
-
-      const data: Attestation[] = await response.json();
-      get().setAttestations(data);
-    } catch (error) {
-      console.error("Error fetching attestations:", error);
-      // Clear attestations and reset stats on error
-      set({
-        allAttestations: [],
-        recentAttestations: [],
-        attestations: [],
-        stats: { totalAttestations: 0, totalSchemas: 0, uniqueAttestors: 0 },
-      });
-    }
-  },
-
-  fetchAttestationById: async (id: string) => {
-    try {
-      const response = await fetch(`${API_URL}/attestations/${id}`);
-      if (!response.ok)
-        throw new Error(`Failed to fetch attestation: ${response.statusText}`);
-
-      const data: AttestationResponse = await response.json();
-      get().setSelectedAttestation(data.content);
-    } catch (error) {
-      console.error("Error fetching attestation by id:", error);
-      get().setSelectedAttestation(null);
-    }
   },
 
   setSelectedAttestation: (attestation) => {
     set({ selectedAttestation: attestation });
   },
 
-  createAttestation: async (payload: NewAttestationPayload) => {
+  refreshStats: () => {
+    const attestations = get().allAttestations;
+    const totalSchemas = useSchemaStore.getState().schemas.length;
+    const uniqueAttestors = new Set(attestations.map((a) => a.creator)).size;
+
+    set({
+      stats: {
+        totalAttestations: attestations.length,
+        totalSchemas,
+        uniqueAttestors,
+      },
+    });
+  },
+
+  // Fetch all
+  fetchAttestations: async () => {
+    set({ loading: true, error: null });
     try {
-      const response = await fetch(`${API_URL}/attestations`, {
+      const res = await fetch(`${API_URL}/attestations`);
+      if (!res.ok) throw new Error(`Error: ${res.statusText}`);
+      const data = await res.json();
+      get().setAttestations(data.data as Attestation[]);
+      set({ loading: false });
+    } catch (err: any) {
+      set({ error: err.message, loading: false });
+    }
+  },
+
+  // Fetch single
+  fetchAttestationById: async (id: string) => {
+    set({ loading: true, error: null });
+    try {
+      const res = await fetch(`${API_URL}/attestations/${id}`);
+      if (!res.ok) throw new Error(`Error: ${res.statusText}`);
+      const data = await res.json();
+      set({ selectedAttestation: data.content as Attestation, loading: false });
+    } catch (err: any) {
+      set({ error: err.message, loading: false });
+    }
+  },
+
+  // Create new
+  createAttestation: async (payload: NewAttestationPayload) => {
+    set({ loading: true, error: null });
+    try {
+      const res = await fetch(`${API_URL}/attestations`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
       });
-
-      if (!response.ok)
-        throw new Error(`Failed to create attestation: ${response.statusText}`);
-
-      const data: NewAttestationResponse = await response.json();
-
-      // Refresh attestations (and stats) after creation
-      await get().fetchAttestations();
-
-      return data;
-    } catch (error) {
-      console.error("Error creating attestation:", error);
+      if (!res.ok) throw new Error(`Error: ${res.statusText}`);
+      const result = await res.json();
+      await get().fetchAttestations(); // Refresh after creation
+      return result as NewAttestationResponse;
+    } catch (err: any) {
+      set({ error: err.message, loading: false });
       return undefined;
     }
-  },
-
-  refreshStats: () => {
-    const totalSchemas = useSchemaStore.getState().allSchemas.length;
-    const totalAttestations = get().allAttestations.length;
-
-    set({
-      stats: {
-        ...get().stats,
-        totalSchemas,
-        totalAttestations,
-      },
-    });
   },
 }));
