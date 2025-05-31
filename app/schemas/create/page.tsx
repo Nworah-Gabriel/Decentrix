@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, Info } from "lucide-react";
 import { useSchemaStore } from "@/store/useSchema";
+import { useWalletStore } from "@/store/useWallet";
 
 const schemaTemplates: Record<string, object> = {
   email: {
@@ -91,6 +92,7 @@ const schemaTemplates: Record<string, object> = {
 export default function CreateSchemaPage() {
   const router = useRouter();
   const { createSchema } = useSchemaStore();
+  const { address } = useWalletStore();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -100,6 +102,8 @@ export default function CreateSchemaPage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -115,6 +119,14 @@ export default function CreateSchemaPage() {
   const handleSubmit = async () => {
     if (!validate()) return;
     setIsLoading(true);
+
+    if (!address) {
+      setErrors({
+        submit: "Wallet not connected. Please connect your wallet first.",
+      });
+      setIsLoading(false);
+      return;
+    }
 
     const definition = schemaTemplates[formData.type];
     console.log("Selected schema type:", formData.type);
@@ -136,14 +148,34 @@ export default function CreateSchemaPage() {
 
     try {
       const res = await createSchema(payload);
-      if (res) router.push("/schemas");
-      else throw new Error("Failed");
+      if (res) {
+        setSuccess(true);
+        setSuccessMessage(
+          `Schema ${formData.name} created successfully! Redirecting to schemas list...`
+        );
+        setTimeout(() => {
+          router.push("/schemas");
+        }, 2000); // 2 second delay
+      } else {
+        throw new Error("Failed");
+      }
     } catch {
       setErrors({ submit: "Failed to create schema" });
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (success) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Alert className="flex items-center gap-2 mb-4">
+          <Info className="h-4 w-4" />
+          <AlertDescription>{successMessage}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -13,6 +13,7 @@ import { getFullnodeUrl } from "@mysten/sui/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "@mysten/dapp-kit/dist/index.css";
 import RegisterEnokiWallets from "./connection/RegisterEnokiWallet";
+import LoadingSpinner from "./ui/LoadingSpinner";
 
 interface Props {
   children: React.ReactNode;
@@ -43,9 +44,12 @@ const Provider: React.FC<Props> = ({ children }) => {
     loadData();
   }, [fetchAttestations, fetchSchemas]);
 
-  if (loading) {
-    return <div>Loading data...</div>;
-  }
+  if (loading)
+    return (
+      <div className="h-screen w-full flex justify-center items-center">
+        <LoadingSpinner />
+      </div>
+    );
 
   return (
     <QueryClientProvider client={queryClient}>

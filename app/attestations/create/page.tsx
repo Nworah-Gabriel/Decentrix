@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, Info } from "lucide-react";
 import { useAttestationStore } from "@/store/useAttestation";
 import { useSchemaStore } from "@/store/useSchema";
+import { useWalletStore } from "@/store/useWallet";
 import {
   Select,
   SelectTrigger,
@@ -24,6 +25,7 @@ export default function CreateAttestationPage() {
   const router = useRouter();
   const { schemas, loading } = useSchemaStore();
   const { createAttestation } = useAttestationStore();
+  const { publicKey } = useWalletStore();
 
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -35,6 +37,8 @@ export default function CreateAttestationPage() {
   const [selectedSchema, setSelectedSchema] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [success, setSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Set selected schema when user picks from dropdown
   const handleSchemaSelect = (schemaId: string) => {
@@ -76,10 +80,27 @@ export default function CreateAttestationPage() {
     if (!validateStep(3)) return;
     setIsLoading(true);
 
+    if (!publicKey) {
+      setErrors({
+        submit: "Wallet not connected. Please connect your wallet first.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const result = await createAttestation(formData);
-      if (result) router.push("/attestations");
-      else setErrors({ submit: "Failed to create attestation" });
+      if (result) {
+        setSuccess(true);
+        setSuccessMessage(
+          `Attestation created successfully! Redirecting to attestations list...`
+        );
+        setTimeout(() => {
+          router.push("/attestations");
+        }, 2000); // 2 second delay
+      } else {
+        throw new Error("Failed");
+      }
     } catch (err) {
       setErrors({ submit: "Failed to create attestation" });
     } finally {
@@ -249,6 +270,17 @@ export default function CreateAttestationPage() {
 
     return null;
   };
+
+  if (success) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Alert className="flex items-center gap-2 mb-4">
+          <Info className="h-4 w-4" />
+          <AlertDescription>{successMessage}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

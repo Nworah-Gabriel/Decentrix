@@ -1,20 +1,26 @@
 import { create } from "zustand";
 import { Transaction } from "@mysten/sui/transactions";
+import { EnokiWallet, type AuthProvider } from "@mysten/enoki";
+import { useWallets, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 
 interface WalletStore {
   address: string | null;
-  publicKey: any;
+  publicKey: string | Uint8Array | null;
   sessionExpiry: Date | null;
   isConnected: boolean;
   balance: string | null;
-  currentAccount: any | null;
+  currentAccount: EnokiWallet | null;
+  walletProvider: AuthProvider | null;
+  network: string;
 
   // Methods
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   setWalletData: (data: {
     address: string;
-    publicKey?: any;
+    publicKey: string | Uint8Array;
+    walletProvider: AuthProvider;
+    network: string;
     sessionExpiry?: Date;
   }) => void;
   clearWalletData: () => void;
@@ -31,16 +37,28 @@ export const useWalletStore = create<WalletStore>((set, get) => {
     isConnected: false,
     balance: null,
     currentAccount: null,
+    walletProvider: null,
+    network: "Testnet",
   };
 
   const executeTransaction = async (transaction: Transaction) => {
     const currentAccount = get().currentAccount;
-    if (!currentAccount?.address) {
+    if (!currentAccount) {
       throw new Error("Wallet not connected");
     }
 
     try {
-      const result = await currentAccount.signAndExecute({
+      // Get the first account from the wallet
+      const accounts = currentAccount.accounts;
+      const firstAccount = accounts[0];
+
+      if (!firstAccount) {
+        throw new Error("No account found in wallet");
+      }
+
+      // Use dapp-kit's signAndExecuteTransaction
+      const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
+      const result = await signAndExecute({
         transaction,
       });
       return result;
@@ -61,18 +79,26 @@ export const useWalletStore = create<WalletStore>((set, get) => {
 
   const setWalletData = (data: {
     address: string;
-    publicKey?: any;
+    publicKey: string | Uint8Array;
+    walletProvider: AuthProvider;
+    network: string;
     sessionExpiry?: Date;
   }) => {
+    const { currentAccount } = get();
+    if (!currentAccount?.accounts?.[0]) {
+      throw new Error("No account found in wallet");
+    }
+
+    console.log("curent account", currentAccount);
+
     set({
       address: data.address,
       publicKey: data.publicKey,
       sessionExpiry: data.sessionExpiry || new Date(Date.now() + 3600000),
       isConnected: true,
-      currentAccount: {
-        address: data.address,
-        publicKey: data.publicKey,
-      },
+      currentAccount,
+      walletProvider: data.walletProvider,
+      network: data.network,
     });
   };
 
@@ -84,11 +110,13 @@ export const useWalletStore = create<WalletStore>((set, get) => {
     const account = get().currentAccount;
     if (account) {
       set({
-        address: account.address,
-        publicKey: account.publicKey,
+        address: account.accounts[0]?.address,
+        publicKey: account.accounts[0]?.publicKey,
         sessionExpiry: new Date(Date.now() + 3600000),
         isConnected: true,
         currentAccount: account,
+        walletProvider: get().walletProvider,
+        network: get().network,
       });
     }
   };

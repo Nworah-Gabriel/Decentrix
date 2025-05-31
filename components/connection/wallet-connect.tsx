@@ -92,10 +92,6 @@ export function WalletConnect() {
 
   useEffect(() => {
     if (currentAccount?.address) {
-      setWalletData({
-        address: currentAccount.address,
-        publicKey: currentAccount.publicKey,
-      });
       fetchBalance();
     } else {
       clearWalletData();
