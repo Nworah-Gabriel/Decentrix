@@ -16,32 +16,59 @@ module sas::sas {
     }
 
     /// Top-level container of all key-value groups
-    public struct DynamicStruct has copy, drop, store {
+    public struct DynamicStruct has key, store {
+        id: UID,
         data: vector<KVPair>,
     }
 
-    /// Pushes a new key-value pair into the DynamicStruct
-    public fun push(ds: &mut DynamicStruct, key: vector<u8>, value: Value) {
-        let len = vector::length(&mut ds.data);
-        let mut inserted = false;
+    fun init(ctx: &mut TxContext) {
+        let dynamic = DynamicStruct {
+            id: object::new(ctx),
+            data: vector::empty<KVPair>(),
+        };
+        transfer::transfer(dynamic, tx_context::sender(ctx));
+    }
+    
 
+    /// Pushes a new key-value pair into the DynamicStruct
+    /// Entry function to push a key-value pair into the DynamicStruct
+    /// `variant`: 0 = U64, 1 = Bool, 2 = Addr, 3 = Bytes
+    public entry fun push(
+        ds: &mut DynamicStruct,
+        key: vector<u8>,
+        variant: u8,
+        u64_val: u64,
+        bool_val: bool,
+        addr_val: address,
+        bytes_val: vector<u8>
+    ) {
+        let value = match (variant) {
+            0 => Value::U64(u64_val),
+            1 => Value::Bool(bool_val),
+            2 => Value::Addr(addr_val),
+            3 => Value::Bytes(bytes_val),
+            _ => abort(1),
+        };
+
+        let len = vector::length(&ds.data);
+        let mut inserted = false;
         let mut i = 0;
+
         while (i < len) {
             let kv = vector::borrow_mut(&mut ds.data, i);
             let keys_len = vector::length(&kv.keys);
             let mut j = 0;
+
             while (j < keys_len) {
                 let k = vector::borrow(&kv.keys, j);
-                if (k == &key) {
+                if (*k == key) {
                     *vector::borrow_mut(&mut kv.values, j) = value;
                     inserted = true;
                     break
                 };
                 j = j + 1;
             };
-            if (inserted) {
-                break
-            };
+            if (inserted) break;
             i = i + 1;
         };
 
@@ -51,11 +78,13 @@ module sas::sas {
                 values: vector::singleton(value),
             };
             vector::push_back(&mut ds.data, new_kv);
-        }
+        };
     }
 
+
+
     /// Get Value by Key (returns a copy, not a reference!)
-    public fun get_value_by_key(d: &DynamicStruct, key: vector<u8>): Option<Value> {
+    public entry fun get_value_by_key(d: &DynamicStruct, key: vector<u8>): Option<Value> {
         let len = vector::length(&d.data);
         let mut i = 0;
         while (i < len) {
@@ -75,7 +104,7 @@ module sas::sas {
         none()
     }
 
-    public fun get_u64(d: &DynamicStruct, key: vector<u8>): Option<u64> {
+    public entry fun get_u64(d: &DynamicStruct, key: vector<u8>): Option<u64> {
         let val = get_value_by_key(d, key);
         if (option::is_some(&val)) {
             let v_ref = option::borrow(&val);
@@ -89,7 +118,7 @@ module sas::sas {
     }
 
 
-    public fun get_bool(d: &DynamicStruct, key: vector<u8>): Option<bool> {
+    public entry fun get_bool(d: &DynamicStruct, key: vector<u8>): Option<bool> {
         let val = get_value_by_key(d, key);
         if (option::is_some(&val)) {
             let v_ref = option::borrow(&val);
@@ -102,7 +131,7 @@ module sas::sas {
         }
     }
 
-    public fun get_addr(d: &DynamicStruct, key: vector<u8>): Option<address> {
+    public entry fun get_addr(d: &DynamicStruct, key: vector<u8>): Option<address> {
         let val = get_value_by_key(d, key);
         if (option::is_some(&val)) {
             let v_ref = option::borrow(&val);
@@ -115,7 +144,7 @@ module sas::sas {
         }
     }
 
-    public fun get_bytes(d: &DynamicStruct, key: vector<u8>): Option<vector<u8>> {
+    public entry fun get_bytes(d: &DynamicStruct, key: vector<u8>): Option<vector<u8>> {
         let val = get_value_by_key(d, key);
         if (option::is_some(&val)) {
             let v_ref = option::borrow(&val);
