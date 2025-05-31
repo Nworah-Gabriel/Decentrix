@@ -15,19 +15,6 @@ const LoadingSpinner = () => {
           <h2 className="text-2xl font-semibold text-gray-800"></h2>
         </div>
 
-        {/* Progress Dots */}
-        <div className="flex justify-center space-x-2">
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-          <div
-            className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
-            style={{ animationDelay: "0.1s" }}
-          ></div>
-          <div
-            className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
-            style={{ animationDelay: "0.2s" }}
-          ></div>
-        </div>
-
         {/* Optional: Network Status */}
         {/* <div className="mt-8 px-6 py-3 bg-white/70 backdrop-blur-sm rounded-lg border border-blue-200">
           <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">

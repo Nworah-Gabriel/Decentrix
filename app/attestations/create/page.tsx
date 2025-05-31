@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +25,7 @@ export default function CreateAttestationPage() {
   const router = useRouter();
   const { schemas, loading } = useSchemaStore();
   const { createAttestation } = useAttestationStore();
-  const { publicKey } = useWalletStore();
+  const { isConnected } = useWalletStore();
 
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -80,7 +80,7 @@ export default function CreateAttestationPage() {
     if (!validateStep(3)) return;
     setIsLoading(true);
 
-    if (!publicKey) {
+    if (!isConnected) {
       setErrors({
         submit: "Wallet not connected. Please connect your wallet first.",
       });

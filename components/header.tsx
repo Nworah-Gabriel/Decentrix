@@ -19,9 +19,9 @@ import {
 const navigation = [
   { name: "Attestations", href: "/attestations" },
   { name: "Schemas", href: "/schemas" },
-  { name: "Analytics", href: "/analytics" },
-  { name: "Tools", href: "/tools" },
-  { name: "Docs", href: "/docs" },
+  // { name: "Analytics", href: "/analytics" },
+  // { name: "Tools", href: "/tools" },
+  // { name: "Docs", href: "/docs" },
 ];
 
 export function Header() {
@@ -94,11 +94,11 @@ export function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" disabled={true}>
               <Twitter className="h-4 w-4" />
             </Button>
 
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" disabled={true}>
               <Github className="h-4 w-4" />
             </Button>
 

@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, Info } from "lucide-react";
 import { useSchemaStore } from "@/store/useSchema";
 import { useWalletStore } from "@/store/useWallet";
+import { useWalletOperations } from "@/hooks/useWalletTransaction";
 
 const schemaTemplates: Record<string, object> = {
   email: {
@@ -92,7 +93,8 @@ const schemaTemplates: Record<string, object> = {
 export default function CreateSchemaPage() {
   const router = useRouter();
   const { createSchema } = useSchemaStore();
-  const { address } = useWalletStore();
+  const { isConnected } = useWalletStore();
+  const { isWalletReady, currentAccount } = useWalletOperations();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -120,9 +122,20 @@ export default function CreateSchemaPage() {
     if (!validate()) return;
     setIsLoading(true);
 
-    if (!address) {
+    // Check if wallet is connected and ready
+    if (!isConnected || !isWalletReady()) {
       setErrors({
-        submit: "Wallet not connected. Please connect your wallet first.",
+        submit:
+          "Wallet not connected or not ready. Please connect your wallet first.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    // Additional check for current account
+    if (!currentAccount?.address) {
+      setErrors({
+        submit: "Wallet address not available. Please reconnect your wallet.",
       });
       setIsLoading(false);
       return;
@@ -131,6 +144,8 @@ export default function CreateSchemaPage() {
     const definition = schemaTemplates[formData.type];
     console.log("Selected schema type:", formData.type);
     console.log("Schema definition:", definition);
+    console.log("Current wallet address:", currentAccount.address);
+
     const definitionJson = JSON.stringify(definition);
     console.log("Stringified definition:", definitionJson);
 
@@ -144,6 +159,8 @@ export default function CreateSchemaPage() {
       name: formData.name,
       description: formData.description,
       definitionJson,
+      // You might want to include the wallet address in the payload
+      walletAddress: currentAccount.address,
     };
 
     try {
@@ -159,12 +176,26 @@ export default function CreateSchemaPage() {
       } else {
         throw new Error("Failed");
       }
-    } catch {
+    } catch (error) {
+      console.error("Schema creation error:", error);
       setErrors({ submit: "Failed to create schema" });
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Show wallet connection warning if not ready
+  const walletWarning =
+    !isConnected || !isWalletReady() ? (
+      <Alert variant="destructive" className="flex items-center gap-2 mb-4">
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          {!isConnected
+            ? "Please connect your wallet to create a schema."
+            : "Wallet is not ready. Please ensure your wallet is properly connected."}
+        </AlertDescription>
+      </Alert>
+    ) : null;
 
   if (success) {
     return (
@@ -196,6 +227,8 @@ export default function CreateSchemaPage() {
           </p>
         </div>
       </div>
+
+      {walletWarning}
 
       <Card>
         <CardContent className="p-6 space-y-4">
@@ -272,7 +305,10 @@ export default function CreateSchemaPage() {
           </Alert>
 
           <div className="flex justify-end">
-            <Button onClick={handleSubmit} disabled={isLoading}>
+            <Button
+              onClick={handleSubmit}
+              disabled={isLoading || !isConnected || !isWalletReady()}
+            >
               {isLoading ? "Creating..." : "Create Schema"}
             </Button>
           </div>

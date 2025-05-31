@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, Copy, ExternalLink, LogOut } from "lucide-react";
+import { Wallet, Copy, LogOut, RefreshCw } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,31 +12,34 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useWalletStore } from "@/store/useWallet";
+import { useWalletSync } from "@/hooks/useWalletSync";
 import {
   useCurrentAccount,
-  useSuiClient,
   useConnectWallet,
   useDisconnectWallet,
   useWallets,
+  useSuiClient,
 } from "@mysten/dapp-kit";
 import {
   isEnokiWallet,
   type EnokiWallet,
   type AuthProvider,
 } from "@mysten/enoki";
-import Link from "next/link";
 
 export function WalletConnect() {
+  // Use the sync hook to keep store and dapp-kit in sync
+  useWalletSync();
+
   const currentAccount = useCurrentAccount();
   const suiClient = useSuiClient();
   const { mutate: connect } = useConnectWallet();
   const { mutate: disconnectWallet } = useDisconnectWallet();
 
-  const { setWalletData, clearWalletData, setBalance } = useWalletStore();
+  // Get data from Zustand store (which is now synced)
+  const { balance, network, refreshSession, setBalance, clearWalletData } =
+    useWalletStore();
 
-  const [balance, setLocalBalance] = useState<string | undefined>(undefined);
-  const [network, setNetwork] = useState<string>("Testnet");
-  const [loading, setLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Get Enoki wallets
   const wallets = useWallets().filter(isEnokiWallet);
@@ -52,25 +55,23 @@ export function WalletConnect() {
     }
   };
 
-  const fetchBalance = async () => {
+  const refreshBalance = async () => {
     if (!currentAccount?.address) return;
 
+    setIsRefreshing(true);
     try {
-      setLoading(true);
-      const balance = await suiClient.getBalance({
+      const balanceData = await suiClient.getBalance({
         owner: currentAccount.address,
       });
 
-      const suiBalance = Number(balance.totalBalance) / 1_000_000_000;
+      const suiBalance = Number(balanceData.totalBalance) / 1_000_000_000;
       const balanceString = `${suiBalance.toFixed(4)} SUI`;
-
-      setLocalBalance(balanceString);
       setBalance(balanceString);
+      refreshSession(); // Update session timestamp
     } catch (error) {
-      console.error("Error fetching balance:", error);
-      setLocalBalance("Error loading");
+      console.error("Error refreshing balance:", error);
     } finally {
-      setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -78,7 +79,6 @@ export function WalletConnect() {
     try {
       disconnectWallet();
       clearWalletData();
-      setLocalBalance(undefined);
     } catch (error) {
       console.error("Failed to disconnect:", error);
     }
@@ -90,15 +90,7 @@ export function WalletConnect() {
     }
   };
 
-  useEffect(() => {
-    if (currentAccount?.address) {
-      fetchBalance();
-    } else {
-      clearWalletData();
-      setLocalBalance(undefined);
-    }
-  }, [currentAccount, setWalletData, clearWalletData]);
-
+  // Show connect button if no wallet is connected
   if (!currentAccount?.address) {
     return (
       <div className="flex flex-col gap-4 items-center">
@@ -107,10 +99,10 @@ export function WalletConnect() {
             onClick={handleGoogleConnect}
             className="bg-blue-600 text-white hover:bg-blue-700 border-blue-600 border-2 px-6 py-3 rounded-md font-medium"
           >
-            Connect wallet
+            Connect Wallet
           </Button>
         ) : (
-          <div className="text-red-500">Wallet not available</div>
+          <div className="text-red-500">Google Wallet not available</div>
         )}
       </div>
     );
@@ -158,29 +150,25 @@ export function WalletConnect() {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Balance</span>
-              <span className="text-sm font-medium">
-                {loading ? "Loading..." : balance || "0 SUI"}
-              </span>
+              <div className="flex items-center gap-1">
+                <span className="text-sm font-medium">
+                  {balance || "0 SUI"}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={refreshBalance}
+                  disabled={isRefreshing}
+                >
+                  <RefreshCw
+                    className={`h-3 w-3 ${isRefreshing ? "animate-spin" : ""}`}
+                  />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
 
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link
-            href={`/address/${currentAccount.address}`}
-            className="flex items-center gap-2"
-          >
-            <ExternalLink className="h-4 w-4" />
-            View Profile
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <Wallet className="h-4 w-4" />
-            My Dashboard
-          </Link>
-        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleDisconnect} className="text-red-600">
           <LogOut className="h-4 w-4 mr-2" />
