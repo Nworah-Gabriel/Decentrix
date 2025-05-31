@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Eye, FileText, User, Shield } from "lucide-react";
 import { useAttestationStore } from "@/store/useAttestation";
-import { Schema, useSchemaStore } from "@/store/useSchema";
+import { useSchemaStore } from "@/store/useSchema";
 import Link from "next/link";
 
 interface SearchResultsProps {
@@ -52,7 +52,7 @@ export function SearchResults({
     (schema) =>
       schema.name.toLowerCase().includes(query.toLowerCase()) ||
       schema.description.toLowerCase().includes(query.toLowerCase()) ||
-      schema.creator.toLowerCase().includes(query.toLowerCase()) ||
+      schema.creator?.toLowerCase().includes(query.toLowerCase()) ||
       schema.id.toLowerCase().includes(query.toLowerCase())
   );
 
@@ -156,7 +156,7 @@ export function SearchResults({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {searchSchemas.slice(0, 5).map((schema: Schema) => (
+                {searchSchemas.slice(0, 5).map((schema) => (
                   <div
                     key={schema.id}
                     className="flex items-center justify-between p-3 border rounded-lg"
