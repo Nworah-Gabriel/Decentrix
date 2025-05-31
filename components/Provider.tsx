@@ -10,8 +10,9 @@ import {
   WalletProvider,
 } from "@mysten/dapp-kit";
 import { getFullnodeUrl } from "@mysten/sui/client";
-import { useWalletStore } from "@/store/useWallet";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import "@mysten/dapp-kit/dist/index.css";
+import RegisterEnokiWallets from "./connection/RegisterEnokiWallet";
 
 interface Props {
   children: React.ReactNode;
@@ -42,28 +43,17 @@ const Provider: React.FC<Props> = ({ children }) => {
     loadData();
   }, [fetchAttestations, fetchSchemas]);
 
-  useEffect(() => {
-    const storedSession = localStorage.getItem("suiSession");
-    if (storedSession) {
-      const { address, expiry } = JSON.parse(storedSession);
-      const expiryDate = new Date(expiry);
-
-      if (expiryDate > new Date()) {
-        useWalletStore.getState().connect();
-      } else {
-        localStorage.removeItem("suiSession");
-      }
-    }
-  }, []);
-
   if (loading) {
-    return <div>Loading data...</div>; // Replace with a skeleton/loader component if needed
+    return <div>Loading data...</div>;
   }
 
   return (
     <QueryClientProvider client={queryClient}>
       <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
-        <WalletProvider>{children}</WalletProvider>
+        <WalletProvider autoConnect={true}>
+          <RegisterEnokiWallets />
+          {children}
+        </WalletProvider>
       </SuiClientProvider>
     </QueryClientProvider>
   );

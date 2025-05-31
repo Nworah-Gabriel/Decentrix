@@ -80,7 +80,8 @@ export default function SchemaDetail({
     }
   };
 
-  const formatAddress = (address: string) => {
+  const formatAddress = (address: string | undefined) => {
+    if (!address) return "Unknown";
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
@@ -160,7 +161,9 @@ export default function SchemaDetail({
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {formatAddress(selectedSchema.creator)}
+                  {selectedSchema.creator
+                    ? formatAddress(selectedSchema.creator)
+                    : "Unknown"}
                 </p>
                 <p className="text-xs text-muted-foreground">Creator</p>
               </div>
@@ -284,7 +287,9 @@ export default function SchemaDetail({
                 </label>
                 <div className="flex items-center gap-2 mt-1">
                   <code className="flex-1 p-2 bg-muted rounded text-xs font-mono">
-                    {formatAddress(selectedSchema.id)}
+                    {selectedSchema.id
+                      ? formatAddress(selectedSchema.id)
+                      : "Unknown"}
                   </code>
                   <Button
                     variant="ghost"
@@ -305,13 +310,15 @@ export default function SchemaDetail({
                 </label>
                 <div className="flex items-center gap-2 mt-1">
                   <code className="flex-1 p-2 bg-muted rounded text-xs font-mono">
-                    {formatAddress(selectedSchema.creator)}
+                    {selectedSchema.creator
+                      ? formatAddress(selectedSchema.creator)
+                      : "Unknown"}
                   </code>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() =>
-                      copyToClipboard(selectedSchema.creator, "creator")
+                      copyToClipboard(selectedSchema.creator as any, "creator")
                     }
                   >
                     <Copy className="h-4 w-4" />
@@ -328,13 +335,15 @@ export default function SchemaDetail({
                 </label>
                 <div className="flex items-center gap-2 mt-1">
                   <code className="flex-1 p-2 bg-muted rounded text-xs font-mono">
-                    {formatAddress(selectedSchema.issuer)}
+                    {selectedSchema.issuer
+                      ? formatAddress(selectedSchema.issuer)
+                      : "Unknown"}
                   </code>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() =>
-                      copyToClipboard(selectedSchema.issuer, "issuer")
+                      copyToClipboard(selectedSchema.issuer as any, "issuer")
                     }
                   >
                     <Copy className="h-4 w-4" />

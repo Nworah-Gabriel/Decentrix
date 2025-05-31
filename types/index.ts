@@ -16,7 +16,7 @@ export interface Schema {
 export interface NewSchemaPayload {
   name: string;
   description: string;
-  definition_json: string;
+  definitionJson: string;
 }
 
 export interface NewSchemaResponse {

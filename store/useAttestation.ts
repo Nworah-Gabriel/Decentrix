@@ -45,9 +45,9 @@ interface AttestationStore {
     payload: NewAttestationPayload
   ) => Promise<NewAttestationResponse | undefined>;
 
-  setAttestations: (data: Attestation[]) => void;
+  setAttestations: (data: Attestation[], totalSchemas: number) => void;
   setSelectedAttestation: (attestation: Attestation | null) => void;
-  refreshStats: () => void;
+  refreshStats: (totalSchemas: number) => void;
 }
 
 // Zustand Store
@@ -65,8 +65,7 @@ export const useAttestationStore = create<AttestationStore>((set, get) => ({
   error: null,
 
   // Setters
-  setAttestations: (data) => {
-    const totalSchemas = useSchemaStore.getState().schemas.length;
+  setAttestations: (data, totalSchemas) => {
     set({
       allAttestations: data,
       recentAttestations: data.slice(0, 8),
@@ -83,9 +82,8 @@ export const useAttestationStore = create<AttestationStore>((set, get) => ({
     set({ selectedAttestation: attestation });
   },
 
-  refreshStats: () => {
+  refreshStats: (totalSchemas) => {
     const attestations = get().allAttestations;
-    const totalSchemas = useSchemaStore.getState().schemas.length;
     const uniqueAttestors = new Set(attestations.map((a) => a.creator)).size;
 
     set({
@@ -104,7 +102,8 @@ export const useAttestationStore = create<AttestationStore>((set, get) => ({
       const res = await fetch(`${API_URL}/attestations`);
       if (!res.ok) throw new Error(`Error: ${res.statusText}`);
       const data = await res.json();
-      get().setAttestations(data.data as Attestation[]);
+      const schemaStore = useSchemaStore.getState();
+      get().setAttestations(data.data as Attestation[], schemaStore.schemas.length);
       set({ loading: false });
     } catch (err: any) {
       set({ error: err.message, loading: false });

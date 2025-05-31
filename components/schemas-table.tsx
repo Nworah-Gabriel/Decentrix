@@ -41,7 +41,7 @@ export function SchemasTable({
     const matchesSearch =
       schema.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       schema.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      schema.creator.toLowerCase().includes(searchTerm.toLowerCase());
+      schema.creator?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesCreator =
       !filterByCreator || schema.creator === filterByCreator;
@@ -99,7 +99,11 @@ export function SchemasTable({
                   </Button>
                 </Link>
                 <Link href="/schemas" className="w-full sm:w-auto">
-                  <Button variant="outline" className="w-full sm:w-auto">
+                  <Button
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    disabled={schemas.length === 0}
+                  >
                     View All Schemas
                   </Button>
                 </Link>
@@ -174,7 +178,7 @@ export function SchemasTable({
                     </td>
                     <td className="p-4">
                       <div className="font-mono text-sm text-muted-foreground">
-                        {formatAddress(schema.creator)}
+                        {formatAddress(schema.creator as any)}
                       </div>
                     </td>
                     <td className="p-4 text-sm text-muted-foreground">
@@ -269,7 +273,7 @@ export function SchemasTable({
                     <div>
                       <span className="text-muted-foreground">Creator:</span>{" "}
                       <span className="font-mono text-xs break-all">
-                        {formatAddress(schema.creator)}
+                        {formatAddress(schema.creator as any)}
                       </span>
                     </div>
                     <div>

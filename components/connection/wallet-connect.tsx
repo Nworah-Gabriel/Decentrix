@@ -15,19 +15,36 @@ import { useWalletStore } from "@/store/useWallet";
 import {
   useCurrentAccount,
   useSuiClient,
-  ConnectButton,
+  useConnectWallet,
   useDisconnectWallet,
+  useWallets,
 } from "@mysten/dapp-kit";
+import {
+  isEnokiWallet,
+  type EnokiWallet,
+  type AuthProvider,
+} from "@mysten/enoki";
+import Link from "next/link";
 
 export function WalletConnect() {
-  const { connect, disconnect, sessionExpiry, isConnected } = useWalletStore();
   const currentAccount = useCurrentAccount();
   const suiClient = useSuiClient();
+  const { mutate: connect } = useConnectWallet();
   const { mutate: disconnectWallet } = useDisconnectWallet();
 
-  const [balance, setBalance] = useState<string | undefined>(undefined);
+  const { setWalletData, clearWalletData, setBalance } = useWalletStore();
+
+  const [balance, setLocalBalance] = useState<string | undefined>(undefined);
   const [network, setNetwork] = useState<string>("Testnet");
   const [loading, setLoading] = useState(false);
+
+  // Get Enoki wallets
+  const wallets = useWallets().filter(isEnokiWallet);
+  const walletsByProvider = wallets.reduce(
+    (map, wallet) => map.set(wallet.provider, wallet),
+    new Map<AuthProvider, EnokiWallet>()
+  );
+  const googleWallet = walletsByProvider.get("google");
 
   const copyAddress = () => {
     if (currentAccount?.address) {
@@ -44,49 +61,61 @@ export function WalletConnect() {
         owner: currentAccount.address,
       });
 
-      // Convert from MIST (smallest unit) to SUI
       const suiBalance = Number(balance.totalBalance) / 1_000_000_000;
-      setBalance(`${suiBalance.toFixed(4)} SUI`);
+      const balanceString = `${suiBalance.toFixed(4)} SUI`;
+
+      setLocalBalance(balanceString);
+      setBalance(balanceString);
     } catch (error) {
       console.error("Error fetching balance:", error);
-      setBalance("Error loading");
+      setLocalBalance("Error loading");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleConnect = async () => {
-    try {
-      await connect();
-    } catch (error) {
-      console.error("Failed to connect:", error);
-    }
-  };
-
-  const handleDisconnect = async () => {
+  const handleDisconnect = () => {
     try {
       disconnectWallet();
-      await disconnect();
+      clearWalletData();
+      setLocalBalance(undefined);
     } catch (error) {
       console.error("Failed to disconnect:", error);
     }
   };
 
+  const handleGoogleConnect = () => {
+    if (googleWallet) {
+      connect({ wallet: googleWallet });
+    }
+  };
+
   useEffect(() => {
     if (currentAccount?.address) {
+      setWalletData({
+        address: currentAccount.address,
+        publicKey: currentAccount.publicKey,
+      });
       fetchBalance();
+    } else {
+      clearWalletData();
+      setLocalBalance(undefined);
     }
-  }, [currentAccount?.address]);
+  }, [currentAccount, setWalletData, clearWalletData]);
 
-  // If no account connected, show connect button
   if (!currentAccount?.address) {
     return (
-      <div className="flex gap-2">
-        {/* Use dApp Kit's ConnectButton or custom button */}
-        <ConnectButton
-          connectText="Connect Wallet"
-          className="bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-200 border-2 p-3 rounded-sm"
-        />
+      <div className="flex flex-col gap-4 items-center">
+        {googleWallet ? (
+          <Button
+            onClick={handleGoogleConnect}
+            className="bg-blue-600 text-white hover:bg-blue-700 border-blue-600 border-2 px-6 py-3 rounded-md font-medium"
+          >
+            Connect wallet
+          </Button>
+        ) : (
+          <div className="text-red-500">Wallet not available</div>
+        )}
       </div>
     );
   }
@@ -137,32 +166,24 @@ export function WalletConnect() {
                 {loading ? "Loading..." : balance || "0 SUI"}
               </span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                Session Expires
-              </span>
-              <span className="text-sm font-medium">
-                {sessionExpiry ? new Date(sessionExpiry).toLocaleString() : "-"}
-              </span>
-            </div>
           </div>
         </div>
 
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <a
+          <Link
             href={`/address/${currentAccount.address}`}
             className="flex items-center gap-2"
           >
             <ExternalLink className="h-4 w-4" />
             View Profile
-          </a>
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <a href="/dashboard" className="flex items-center gap-2">
+          <Link href="/dashboard" className="flex items-center gap-2">
             <Wallet className="h-4 w-4" />
             My Dashboard
-          </a>
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleDisconnect} className="text-red-600">

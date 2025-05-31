@@ -1,8 +1,6 @@
 import { create } from "zustand";
-import { Transaction } from "@mysten/sui/transactions";
 import { API_URL } from "@/constants";
 import { NewSchemaPayload, NewSchemaResponse, Schema } from "@/types";
-import { useWalletStore } from "@/store/useWallet";
 
 // Using Schema type from @/types
 
@@ -10,33 +8,33 @@ interface SchemaStore {
   schemas: Schema[];
   loading: boolean;
   error: string | null;
+  selectedSchema?: Schema | null;
+  recentSchemas: Schema[];
 
   fetchSchemas: () => Promise<void>;
+  fetchSchemaById: (id: string) => Promise<void>;
   createSchema: (payload: NewSchemaPayload) => Promise<NewSchemaResponse>;
-
 }
 
 export const useSchemaStore = create<SchemaStore>((set, get) => {
-  const walletStore = useWalletStore();
-
   const createSchema = async (payload: NewSchemaPayload) => {
     set({ loading: true, error: null });
-    
+
     try {
       const response = await fetch(`${API_URL}/schemas`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           name: payload.name,
           description: payload.description,
-          definition_json: payload.definition_json
+          definitionJson: payload.definitionJson
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create schema');
+        throw new Error("Failed to create schema");
       }
 
       const result = await response.json();
@@ -45,7 +43,42 @@ export const useSchemaStore = create<SchemaStore>((set, get) => {
       return result;
     } catch (error: any) {
       set({ error: error.message, loading: false });
-      throw new Error('Failed to create schema: ' + error.message);
+      throw new Error("Failed to create schema: " + error.message);
+    }
+  };
+
+  const fetchSchemaById = async (id: string) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await fetch(`${API_URL}/schemas/${id}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch schema");
+      }
+      const result = await response.json();
+      set({ selectedSchema: result.content, loading: false });
+    } catch (error: any) {
+      set({ error: error.message, loading: false });
+      throw error;
+    }
+  };
+
+  const fetchSchemas = async () => {
+    set({ loading: true, error: null });
+    try {
+      const response = await fetch(`${API_URL}/schemas`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch schemas");
+      }
+      const result = await response.json();
+      const content = Array.isArray(result.content) ? result.content : [];
+      set({
+        schemas: content,
+        loading: false,
+        recentSchemas: content.slice(0, 8),
+      });
+    } catch (error: any) {
+      set({ error: error.message, loading: false });
+      throw error;
     }
   };
 
@@ -53,49 +86,10 @@ export const useSchemaStore = create<SchemaStore>((set, get) => {
     schemas: [],
     loading: false,
     error: null,
-    fetchSchemas: async () => {
-      set({ loading: true, error: null });
-      try {
-        const response = await fetch(`${API_URL}/schemas`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch schemas: ${response.statusText}`);
-        }
-        const data = await response.json();
-        set({ schemas: data.schemas });
-      } catch (error: any) {
-        set({ error: error.message });
-      } finally {
-        set({ loading: false });
-      }
-    },
-    createSchema: async (payload: NewSchemaPayload) => {
-      set({ loading: true, error: null });
-      try {
-        const response = await fetch(`${API_URL}/schemas`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: payload.name,
-            description: payload.description,
-            definition_json: payload.definition_json
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to create schema: ${response.statusText}`);
-        }
-
-        const result = await response.json();
-        await get().fetchSchemas();
-        return result;
-      } catch (error: any) {
-        set({ error: error.message });
-        throw error;
-      } finally {
-        set({ loading: false });
-      }
-    },
+    selectedSchema: null,
+    recentSchemas: [],
+    fetchSchemas,
+    fetchSchemaById,
+    createSchema,
   };
 });
